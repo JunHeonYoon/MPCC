@@ -24,7 +24,7 @@ CarModel = 'ORCA';
 MPC_vars = getMPC_vars(CarModel);
 ModelParams=getModelParams(MPC_vars.ModelNo);
 % choose optimization interface options: 'Yalmip','CVX','hpipm','quadprog'
-MPC_vars.interface = 'hpipm';
+MPC_vars.interface = 'quadprog';
 
 
 nx = ModelParams.nx;
