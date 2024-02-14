@@ -14,10 +14,10 @@
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 
-#include "Tests/spline_test.h"
-#include "Tests/model_integrator_test.h"
-#include "Tests/constratins_test.h"
-#include "Tests/cost_test.h"
+// #include "Tests/spline_test.h"
+// #include "Tests/model_integrator_test.h"
+// #include "Tests/constratins_test.h"
+// #include "Tests/cost_test.h"
 
 #include "MPC/mpc.h"
 #include "Model/integrator.h"
@@ -39,18 +39,6 @@ int main() {
                            jsonConfig["bounds_path"],
                            jsonConfig["track_path"],
                            jsonConfig["normalization_path"]};
-
-    // std::cout << testSpline() << std::endl;
-    // std::cout << testArcLengthSpline(json_paths) << std::endl;
-
-    // std::cout << testIntegrator(json_paths) << std::endl;
-    // std::cout << testLinModel(json_paths) << std::endl;
-
-    // std::cout << testAlphaConstraint(json_paths) << std::endl;
-    // std::cout << testTireForceConstraint(json_paths) << std::endl;
-    // std::cout << testTrackConstraint(json_paths) << std::endl;
-
-    // std::cout << testCost(json_paths) << std::endl;
 
     Integrator integrator = Integrator(jsonConfig["Ts"],json_paths);
     Plotting plotter = Plotting(jsonConfig["Ts"],json_paths);

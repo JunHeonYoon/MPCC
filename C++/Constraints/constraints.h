@@ -21,6 +21,12 @@
 #include "Spline/arc_length_spline.h"
 #include "Model/model.h"
 namespace mpcc{
+/// @brief polytopic inequality constraint matrix and bound vectors:
+// dl <= C xk + D uk <= du
+/// @param C (Eigen::MatrixXd) polytopic state constraints
+/// @param D (Eigen::MatrixXd) polytopic input constraints
+/// @param dl (Eigen::MatrixXd) lower bounds
+/// @param du (Eigen::MatrixXd) upper bounds
 struct ConstrainsMatrix {
     // dl <= C xk + D uk <= du
     C_MPC C;    //polytopic state constraints
@@ -29,6 +35,11 @@ struct ConstrainsMatrix {
     d_MPC du;   //upper bounds
 };
 
+/// @brief 1-D inequality constraint wrt state:
+// dl_i <= C_i xk<= du_i
+/// @param C_i (Eigen::MatrixXd) polytopic input constraints
+/// @param dl (double) lower bounds
+/// @param du (double) upper bounds
 struct OneDConstraint {
     const C_i_MPC C_i;
     const double dl_i;
@@ -37,17 +48,41 @@ struct OneDConstraint {
 
 class Constraints {
 public:
-    ConstrainsMatrix getConstraints(const ArcLengthSpline &track,const State &x,const Input &u) const;
-
     Constraints();
     Constraints(double Ts,const PathToJson &path);
+    
+    /// @brief compute all the polytopic state constraints given current state
+    /// @param track (ArcLengthSpline) reference track
+    /// @param x (State) current state
+    /// @param u (ControlInput) current control input
+    /// @return (ConstrainsMatrix) polytopic inequality constraint matrix and bound vectors
+    ConstrainsMatrix getConstraints(const ArcLengthSpline &track,const State &x,const Input &u) const;
+
 private:
+    /// @brief compute 1-D track inequality constraint given current state
+    /// @param track (ArcLengthSpline) reference track
+    /// @param x (State) current state
+    /// @return (OneDConstraint) constraint matrix and bound wrt state
     OneDConstraint getTrackConstraints(const ArcLengthSpline &track,const State &x) const;
 
+    /// @brief compute 1-D tire friction elipse inequality constraint given current state
+    /// @param x (State) current state
+    /// @return (OneDConstraint) constraint matrix and bound wrt state
     OneDConstraint getTireConstraintRear(const State &x) const;
+
+    /// @brief compute tire friction constraint jacobian wrt current state
+    /// @param x (State) current state
+    /// @return (Eigen::MatrixXd) tire friction constraint jacobian
     C_i_MPC getTireConstraintRearJac(const State &x) const;
 
+    /// @brief compute 1-D slip angle inequality constraint given current state
+    /// @param x (State) current state
+    /// @return (Eigen::MatrixXd) tire friction constraint jacobian
     OneDConstraint getAlphaConstraintFront(const State &x) const;
+
+    /// @brief compute slip angle constraint jacobian wrt current state
+    /// @param x (State) current state
+    /// @return (Eigen::MatrixXd) slip angle constraint jacobian
     C_i_MPC getAlphaConstraintFrontJac(const State &x) const;
 
     Model model_;

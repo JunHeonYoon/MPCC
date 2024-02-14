@@ -29,13 +29,11 @@ Model::Model(double Ts,const PathToJson &path)
 
 double Model::getSlipAngleFront(const State &x) const
 {
-    // compute slip angels given current state
     return -std::atan2(x.vy+x.r*param_.lf,x.vx) + x.delta;
 }
 
 double Model::getSlipAngleRear(const State &x) const
 {
-    // compute slip angels given current state
     return -std::atan2(x.vy-x.r*param_.lr,x.vx);
 }
 
@@ -279,6 +277,7 @@ LinModelMatrix Model::getModelJacobian(const State &x, const Input &u) const
 
 LinModelMatrix Model::discretizeModel(const LinModelMatrix &lin_model_c) const
 {
+    // https://en.wikipedia.org/wiki/Discretization
     // disctetize the continuous time linear model \dot x = A x + B u + g using ZHO
     Eigen::Matrix<double,NX+NU+1,NX+NU+1> temp = Eigen::Matrix<double,NX+NU+1,NX+NU+1>::Zero();
     // building matrix necessary for expm

@@ -27,13 +27,28 @@ public:
     Bounds();
     Bounds(BoundsParam bounds_param);
 
+    /// @brief get lower bound for state
+    /// @return (Eigen::VectorXd) lower bound for state
     Bounds_x getBoundsLX() const;
+
+    /// @brief get upper bound for state
+    /// @return (Eigen::VectorXd) upper bound for state
     Bounds_x getBoundsUX() const;
 
+    /// @brief get lower bound for control input
+    /// @return (Eigen::VectorXd) lower bound for control input
     Bounds_u getBoundsLU() const;
+
+    /// @brief get upper bound for control input
+    /// @return (Eigen::VectorXd) upper bound for control input
     Bounds_u getBoundsUU() const;
 
+    /// @brief get lower bound for slack variables
+    /// @return (Eigen::VectorXd) lower bound for slack variables
     Bounds_s getBoundsLS() const;
+
+    /// @brief get upper bound for slack variables
+    /// @return (Eigen::VectorXd) upper bound for slack variables
     Bounds_s getBoundsUS() const;
 
 private:

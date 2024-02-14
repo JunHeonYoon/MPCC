@@ -28,6 +28,13 @@ namespace mpcc {
 //used namespace
 using json = nlohmann::json;
 
+/// @brief Tracking waypoints
+/// @param X (const Eigen::VectorXd) center X waypoints
+/// @param Y (const Eigen::VectorXd) center y waypoints
+/// @param X_inner (const Eigen::VectorXd) Inner X waypoints
+/// @param Y_inner (const Eigen::VectorXd) Inner y waypoints
+/// @param X_outer (const Eigen::VectorXd) Outer X waypoints
+/// @param Y_outer (const Eigen::VectorXd) Outer y waypoints
 struct TrackPos {
     const Eigen::VectorXd X;
     const Eigen::VectorXd Y;
@@ -42,6 +49,9 @@ struct TrackPos {
 class Track {
 public:
     Track(std::string file);
+
+    /// @brief get Track waypoints 
+    /// @return (TrackPos) Tracking waypoints about x, y-axis (center, inner, outer)
     TrackPos getTrack();
 
 private:

@@ -38,11 +38,25 @@
 
 namespace mpcc{
 
+/// @brief parameters for optimization, state and control input of MPC
+/// @param xk (State) state
+/// @param uk (Input) control input
 struct OptVariables {
     State xk;
     Input uk;
 };
 
+/// @brief dynamic model, cost, constraint matrix in a stage for MPC 
+/// @param lin_model (LinModelMatrix) linear matrix of car model
+/// @param cost_mat (CostMatrix) cost matrix 
+/// @param constrains_mat (ConstrainsMatrix) constraint matrix
+/// @param u_bounds_x (Eigen::VectorXd) upper bound of state
+/// @param l_bounds_x (Eigen::VectorXd) lower bound of state
+/// @param u_bounds_u (Eigen::VectorXd) upper bound of control input
+/// @param l_bounds_u (Eigen::VectorXd) lower bound of control input
+/// @param u_bounds_s (Eigen::VectorXd) upper bound of slack variables
+/// @param l_bounds_s (Eigen::VectorXd) lower bound of slack variables
+/// @param nx,nu,nbx,nbu,ng,ns (int) number of each parameters
 struct Stage {
     LinModelMatrix lin_model;
     CostMatrix cost_mat;
@@ -62,10 +76,14 @@ struct Stage {
     //nbx   -> number of bounds on x
     //nbu   -> number of bounds on u
     //ng    -> number of polytopic constratins
-    //ns   -> number of soft constraints
+    //ns    -> number of soft constraints
     int nx, nu, nbx, nbu, ng, ns;
 };
 
+/// @brief output of MPC
+/// @param u0 (Input) optimal control input
+/// @param mpc_horizon (std::array<OptVariables,N+1>) total horizon results (state and control input)
+/// @param time_total (double) time to run MPC
 struct MPCReturn {
     const Input u0;
     const std::array<OptVariables,N+1> mpc_horizon;
@@ -74,14 +92,67 @@ struct MPCReturn {
 
 class MPC {
 public:
-    MPCReturn runMPC(State &x0);
-
-    void setTrack(const Eigen::VectorXd &X, const Eigen::VectorXd &Y);
-
     MPC();
     MPC(int n_sqp, int n_reset, double sqp_mixing, double Ts,const PathToJson &path);
 
+    /// @brief run MPC by sqp given current state
+    /// @param x0 (State) current state
+    /// @return (MPCReturn) log for MPC: optimal control input, total horizon results, time to run MPC
+    MPCReturn runMPC(State &x0);
+
+    /// @brief set track given X-Y path data
+    /// @param X (Eigen::VectorXd) X path data
+    /// @param Y (Eigen::VectorXd) Y path data
+    void setTrack(const Eigen::VectorXd &X, const Eigen::VectorXd &Y);
+
 private:
+    /// @brief MPC whole stage data (model, cost constraint) by initial variables
+    void setMPCProblem();
+
+    /// @brief set MPC single stage data (model, cost constraint) given state and control input
+    /// @param xk (State) state
+    /// @param uk (Input) control input
+    /// @param time_step (int) time_step
+    void setStage(const State &xk, const Input &uk, int time_step);
+
+    /// @brief normalizing cost by normalize parameters
+    /// @param cost_mat (CostMatrix) cost matrix before normalization
+    /// @return (CostMatrix) normalized cost matrix
+    CostMatrix normalizeCost(const CostMatrix &cost_mat);
+
+    /// @brief normalizing dynamic model by normalize parameters
+    /// @param cost_mat (LinModelMatrix) dynamic model matrix before normalization
+    /// @return (LinModelMatrix) normalized dynamic model matrix
+    LinModelMatrix normalizeDynamics(const LinModelMatrix &lin_model);
+
+    /// @brief normalizing constraints by normalize parameters
+    /// @param cost_mat (ConstrainsMatrix) dconstraints matrix before normalization
+    /// @return (ConstrainsMatrix) normalized constraints matrix
+    ConstrainsMatrix normalizeCon(const ConstrainsMatrix &con_mat);
+
+    /// @brief denormalize MPC solution 
+    /// @param solution (std::array<OptVariables,N+1>) raw MPC solution
+    /// @return std::array<OptVariables,N+1> denormalized MPC solution
+    std::array<OptVariables,N+1> deNormalizeSolution(const std::array<OptVariables,N+1> &solution);
+
+    /// @brief to be warmstart, update initial variables for MPC
+    /// @param x0 (State) solution of MPC before time step
+    void updateInitialGuess(const State &x0);
+
+    /// @brief generate new initial variables for MPC for the first
+    /// @param x0 (State) current state
+    void generateNewInitialGuess(const State &x0);
+
+    /// @brief unwrapping for initial variables which have phi(yaw) and arc length(s) 
+    void unwrapInitialGuess();
+
+    /// @brief mixing current and last solution of MPC
+    /// @param last_solution (std::array<OptVariables, N + 1>) last solution
+    /// @param current_solution (std::array<OptVariables, N + 1>) current solution
+    /// @return (std::array<OptVariables, N + 1>) mixed solution
+    std::array<OptVariables, N + 1> sqpSolutionUpdate(const std::array<OptVariables, N + 1> &last_solution,
+                                                      const std::array<OptVariables, N + 1> &current_solution);
+
     bool valid_initial_guess_;
 
     std::array<Stage, N + 1> stages_;
@@ -89,29 +160,11 @@ private:
     std::array<OptVariables, N + 1> initial_guess_;
     std::array<OptVariables, N + 1> optimal_solution_;
 
-    void setMPCProblem();
-
-    void setStage(const State &xk, const Input &uk, int time_step);
-
-    CostMatrix normalizeCost(const CostMatrix &cost_mat);
-    LinModelMatrix normalizeDynamics(const LinModelMatrix &lin_model);
-    ConstrainsMatrix normalizeCon(const ConstrainsMatrix &con_mat);
-    std::array<OptVariables,N+1> deNormalizeSolution(const std::array<OptVariables,N+1> &solution);
-
-    void updateInitialGuess(const State &x0);
-
-    void generateNewInitialGuess(const State &x0);
-
-    void unwrapInitialGuess();
-
-    std::array<OptVariables, N + 1> sqpSolutionUpdate(const std::array<OptVariables, N + 1> &last_solution,
-                                                      const std::array<OptVariables, N + 1> &current_solution);
-
-    int n_sqp_;
-    double sqp_mixing_;
+    int n_sqp_; // number of iteration for sqp
+    double sqp_mixing_; // mixing ratio
     int n_non_solves_;
     int n_no_solves_sqp_;
-    int n_reset_;
+    int n_reset_; // threshhold for reset the initial guess
 
     const double Ts_;
 

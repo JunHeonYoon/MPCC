@@ -62,7 +62,7 @@ OneDConstraint Constraints::getTireConstraintRear(const State &x) const
     const TireForces f_rear = model_.getForceRear(x);
     const NormalForces f_normal = model_.getForceNormal(x);
 
-    // compute tire friction constraint jacobean
+    // compute tire friction constraint jacobian
     const C_i_MPC C_tire_constraint = getTireConstraintRearJac(x);
 
     // compute zero order term and max force

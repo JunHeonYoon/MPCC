@@ -30,12 +30,12 @@ Param::Param(std::string file){
     std::ifstream iModel(file);
     json jsonModel;
     iModel >> jsonModel;
+    
     // Model Parameters
-    Cm1 	= jsonModel["Cm1"];
-    Cm2 	= jsonModel["Cm2"];
-
-    Cr0 	= jsonModel["Cr0"];
-    Cr2 	= jsonModel["Cr2"];
+    Cm1 = jsonModel["Cm1"];
+    Cm2 = jsonModel["Cm2"];
+    Cr0 = jsonModel["Cr0"];
+    Cr2 = jsonModel["Cr2"];
 
     Br 	= jsonModel["Br"];
     Cr 	= jsonModel["Cr"];
@@ -54,6 +54,7 @@ Param::Param(std::string file){
     car_w = jsonModel["car_w"];
     
     g = jsonModel["g"];
+
     //Constraint Parameters
     r_in = jsonModel["R_in"];
     r_out = jsonModel["R_out"];
@@ -64,6 +65,7 @@ Param::Param(std::string file){
     e_eps = jsonModel["E_eps"];
 
     max_alpha = jsonModel["maxAlpha"];
+
     // initial warm start and trust region (model dependent)
     initial_velocity = jsonModel["initial_velocity"];
     s_trust_region = jsonModel["s_trust_region"];

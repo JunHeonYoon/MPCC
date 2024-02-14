@@ -23,7 +23,7 @@ CubicSpline::CubicSpline()
 }
 
 void CubicSpline::setRegularData(const Eigen::VectorXd &x_in,const Eigen::VectorXd &y_in,const double delta_x) {
-    //if x and y have same length, stare given data in spline data struct
+    //if x and y have same length, store given data in spline data struct
     if(x_in.size() == y_in.size())
     {
         spline_data_.x_data = x_in;
@@ -42,7 +42,7 @@ void CubicSpline::setRegularData(const Eigen::VectorXd &x_in,const Eigen::Vector
 
 void CubicSpline::setData(const Eigen::VectorXd &x_in,const Eigen::VectorXd &y_in)
 {
-    //if x and y have same length, stare given data in spline data struct
+    //if x and y have same length, store given data in spline data struct
     if(x_in.size() == y_in.size())
     {
         spline_data_.x_data = x_in;
@@ -64,7 +64,7 @@ void CubicSpline::setData(const Eigen::VectorXd &x_in,const Eigen::VectorXd &y_i
 
 bool CubicSpline::compSplineParams()
 {
-    // compute spline parameters parameters
+    // compute spline parameters
     // code is a replica of the wiki code
     if(!data_set_)
     {
@@ -177,7 +177,7 @@ void CubicSpline::genSpline(const Eigen::VectorXd &x_in,const Eigen::VectorXd &y
 
     bool succes = compSplineParams();
 
-    // TODO if succes is flase call exeption
+    // TODO if succes is false call exeption
 }
 
 double CubicSpline::getPoint(double x) const
@@ -221,7 +221,7 @@ double CubicSpline::getDerivative(double x) const
 double CubicSpline::getSecondDerivative(double x) const
 {
     // evaluate second derivative of spline
-    // identical to noram spline with y' = 2 c + 6 d dx
+    // identical to noram spline with y'' = 2 c + 6 d dx
     int index;
     double x_i;
     double dx;

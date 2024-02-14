@@ -106,9 +106,8 @@ RawPath ArcLengthSpline::outlierRemoval(const Eigen::VectorXd &X_original,const 
 {
 
     // remove points which are not at all equally spaced, to avoid fitting problems
-
     // compute mean distance between points and then process the points such that points
-    // are not closer than 0.75 the mean distance
+    // are not closer than 0.7 the mean distance
 
     double dx,dy;       // difference between points in x and y
     Eigen::VectorXd distVec;   // vector with all the distances
@@ -151,7 +150,7 @@ RawPath ArcLengthSpline::outlierRemoval(const Eigen::VectorXd &X_original,const 
         dx = X_original(i)-X_original(j);
         dy = Y_original(i)-Y_original(j);
         dist = std::sqrt(dx*dx + dy*dy);
-        // if this distance is smaller than 0.7 the mean distance add this point to the new X-Y path
+        // if this distance is larger than 0.7 the mean distance add this point to the new X-Y path
         if(dist >= 0.7*meanDist)
         {
             resampled_path.X(k) = X_original(i);
@@ -223,7 +222,7 @@ void ArcLengthSpline::gen2DSpline(const Eigen::VectorXd &X,const Eigen::VectorXd
 {
     // generate 2-D arc length parametrized spline given X-Y data
 
-    // remove outliers, depending on how iregular the points are this can help
+    // remove outliers, depending on how irregular the points are this can help
     RawPath clean_path;
     clean_path = outlierRemoval(X,Y);
     // successively fit spline and re-sample
@@ -264,7 +263,7 @@ double ArcLengthSpline::getLength() const
     return path_data_.s(path_data_.n_points-1);
 }
 
-double ArcLengthSpline::porjectOnSpline(const State &x) const
+double ArcLengthSpline::projectOnSpline(const State &x) const
 {
     Eigen::Vector2d pos;
     pos(0) = x.X;

@@ -97,7 +97,8 @@ ErrorInfo Cost::getErrorInfo(const ArcLengthSpline &track,const State &x) const
 
 CostMatrix Cost::getBetaCost(const State &x) const
 {
-//    CostMatrix beta_cost;
+    // CostMatrix beta_cost;
+    // Linearization (not using Hessian matrix of beta)
     const double vx = x.vx;
     const double vy = x.vy;
     // jacobian of beta
@@ -153,6 +154,8 @@ CostMatrix Cost::getContouringCost(const ArcLengthSpline &track, const State &x,
     Q_MPC Q_contouring_cost = Q_MPC::Zero();
     q_MPC q_contouring_cost = q_MPC::Zero();
 
+    // Linearize contouring error function by jacobian. 
+    // Error = d_contouring_error * State + contouring_error_zero
     Eigen::Matrix<double,1,NX> d_contouring_error = Eigen::Matrix<double,1,NX>::Zero();
     d_contouring_error = error_info.d_error.row(0);
     const double contouring_error_zero = error_info.error(0) - d_contouring_error*stateToVector(x);
@@ -187,7 +190,7 @@ CostMatrix Cost::getHeadingCost(const ArcLengthSpline &track, const State &x,int
     theta_ref += 2.0*M_PI*std::round((x.phi - theta_ref)/(2.0*M_PI));
 
     // if(std::fabs(x.phi - theta_ref)>= 1.5){
-    //     std::cout << "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk" << std::endl;
+    //     std::cout << "kkkkk" << std::endl;
     // }
 
 
@@ -221,7 +224,7 @@ CostMatrix Cost::getInputCost() const
 
 CostMatrix Cost::getSoftConstraintCost() const
 {
-    // input cost and rate of chagen of real inputs
+    // input cost and rate of chage of real inputs
     Z_MPC Z_cost = Z_MPC::Identity();
     z_MPC z_cost = z_MPC::Ones();
     // cost of "real" inputs

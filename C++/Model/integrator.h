@@ -24,12 +24,30 @@
 namespace mpcc{
 class Integrator {
 public:
-    State RK4(const State &x, const Input &u,double ts) const;
-    State EF(const State &x, const Input &u,double ts) const;
-    State simTimeStep(const State &x, const Input &u,double ts) const;
-
     Integrator();
     Integrator(double Ts, const PathToJson &path);
+
+    /// @brief compute very next state given current state, control input and time by RK4
+    /// @param x (State) current state
+    /// @param u (Input) current control input
+    /// @param ts (double) time step size
+    /// @return (State) next state
+    State RK4(const State &x, const Input &u,double ts) const;
+
+    /// @brief compute very next state given current state, control input and time by Euler-Forward
+    /// @param x (State) current state
+    /// @param u (Input) current control input
+    /// @param ts (double) time step size
+    /// @return (State) next state
+    State EF(const State &x, const Input &u,double ts) const;
+
+    /// @brief compute next state given current state, control input and time by RK4
+    /// @param x (State) current state
+    /// @param u (Input) current control input
+    /// @param ts (double) time step size
+    /// @return (State) next state
+    State simTimeStep(const State &x, const Input &u,double ts) const;
+
 
 private:
     const double fine_time_step_ = 0.001;

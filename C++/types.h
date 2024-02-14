@@ -19,17 +19,28 @@
 
 #include "config.h"
 namespace mpcc{
-struct State{
+/// @brief State of car system
+/// @param X   x position wrt global frame (double)
+/// @param Y   y position wrt global frame (double)
+/// @param phi yaw wrt global frame (double)
+/// @param vx  x velocity wrt car frame (double)
+/// @param vy  y velocity wrt car frame (double)
+/// @param r  yaw dot wrt car frame (double)
+/// @param s  path parameter, arc length (double)
+/// @param D  driving command (1: full throttle, -1: full braking) (double)
+/// @param delta steering angle (double)
+/// @param vs velocity of path parameter (double)
+struct State{ 
     double X;
     double Y;
-    double phi;
+    double phi; // yaw of robot
     double vx;
     double vy;
-    double r;
-    double s;
-    double D;
-    double delta;
-    double vs;
+    double r; // phi dot
+    double s; // path parameter (arc length)
+    double D; // driving command (1: full throttle, -1: full braking)
+    double delta; // steering angle
+    double vs; // velocity of path parameter
 
     void setZero()
     {
@@ -44,7 +55,7 @@ struct State{
         delta = 0.0;
         vs = 0.0;
     }
-
+    /// @brief mapping phi to [-pi, pi] and s to [0, track_length]
     void unwrap(double track_length)
     {
         if (phi > M_PI)
@@ -57,7 +68,7 @@ struct State{
         if (s < 0)
             s += track_length;
     }
-
+    /// @brief set minimum x velocity
     void vxNonZero(double vx_zero)
     {
         if(vx < vx_zero){
@@ -68,7 +79,10 @@ struct State{
         }
     }
 };
-
+/// @brief Control input of car system
+/// @param dD   change of driving command (double)
+/// @param dDelta   change of steering angle (double)
+/// @param dVs change of velocity of path parameter (double)
 struct Input{
     double dD;
     double dDelta;
@@ -81,7 +95,12 @@ struct Input{
         dVs = 0.0;
     }
 };
-
+/// @brief path of JSON files
+/// @param param_path path of model parameter (std::string)
+/// @param cost_path   path of cost parameter(std::string)
+/// @param bounds_path  path of bound parameter (std::string)
+/// @param track_path  path of track (std::string)
+/// @param normalization_path  path of normalization parameter (std::string) 
 struct PathToJson{
     const std::string param_path;
     const std::string cost_path;
@@ -93,7 +112,8 @@ struct PathToJson{
 typedef Eigen::Matrix<double,NX,1> StateVector;
 typedef Eigen::Matrix<double,NU,1> InputVector;
 
-typedef Eigen::Matrix<double,NX,NX> A_MPC;
+// x_(k+1) = Ax + Bu + g
+typedef Eigen::Matrix<double,NX,NX> A_MPC; 
 typedef Eigen::Matrix<double,NX,NU> B_MPC;
 typedef Eigen::Matrix<double,NX,1> g_MPC;
 
