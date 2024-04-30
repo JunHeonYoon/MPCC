@@ -20,38 +20,78 @@ namespace mpcc{
 StateVector stateToVector(const State &x)
 {
     StateVector xk;
-    xk(0) = x.X;
-    xk(1) = x.Y;
-    xk(2) = x.phi;
-    xk(3) = x.vx;
-    xk(4) = x.vy;
-    xk(5) = x.r;
-    xk(6) = x.s;
-    xk(7) = x.D;
-    xk(8) = x.delta;
-    xk(9) = x.vs;
+    xk(0) = x.q1;
+    xk(1) = x.q2;
+    xk(2) = x.q3;
+    xk(3) = x.q4;
+    xk(4) = x.q5;
+    xk(5) = x.q6;
+    xk(6) = x.q7;
+    xk(7) = x.s;
+    xk(8) = x.vs;
+    return xk;
+}
+
+JointVector stateToJointVector(const State &x)
+{
+    JointVector xk;
+    xk(0) = x.q1;
+    xk(1) = x.q2;
+    xk(2) = x.q3;
+    xk(3) = x.q4;
+    xk(4) = x.q5;
+    xk(5) = x.q6;
+    xk(6) = x.q7;
     return xk;
 }
 
 InputVector inputToVector(const Input &u)
 {
-    InputVector uk = {u.dD,u.dDelta,u.dVs};
+    InputVector uk;
+    uk(0) = u.dq1;
+    uk(1) = u.dq2;
+    uk(2) = u.dq3;
+    uk(3) = u.dq4;
+    uk(4) = u.dq5;
+    uk(5) = u.dq6;
+    uk(6) = u.dq7;
+    uk(7) = u.dVs;
     return uk;
+}
+
+JointVector inputToJointVector(const Input &u)
+{
+    JointVector uk;
+    uk(0) = u.dq1;
+    uk(1) = u.dq2;
+    uk(2) = u.dq3;
+    uk(3) = u.dq4;
+    uk(4) = u.dq5;
+    uk(5) = u.dq6;
+    uk(6) = u.dq7;
+    return uk;
+}
+
+SlackVector slackToVector(const Slack &s)
+{
+    SlackVector sk;
+    sk(0) = s.selcol;
+    sk(1) = s.sing;
+    return sk;
 }
 
 State vectorToState(const StateVector &xk)
 {
     State x;
-    x.X     = xk(0);
-    x.Y     = xk(1);
-    x.phi   = xk(2);
-    x.vx    = xk(3);
-    x.vy    = xk(4);
-    x.r     = xk(5);
-    x.s     = xk(6);
-    x.D     = xk(7);
-    x.delta = xk(8);
-    x.vs    = xk(9);
+    x.q1 = xk(0);
+    x.q2 = xk(1);
+    x.q3 = xk(2);
+    x.q4 = xk(3);
+    x.q5 = xk(4);
+    x.q6 = xk(5);
+    x.q7 = xk(6);
+    x.s  = xk(7);
+    x.vs = xk(8);
 
     return x;
 }
@@ -59,26 +99,38 @@ State vectorToState(const StateVector &xk)
 Input vectorToInput(const InputVector &uk)
 {
     Input u;
-    u.dD     = uk(0);
-    u.dDelta = uk(1);
-    u.dVs    = uk(2);
+    u.dq1 = uk(0);
+    u.dq2 = uk(1);
+    u.dq3 = uk(2);
+    u.dq4 = uk(3);
+    u.dq5 = uk(4);
+    u.dq6 = uk(5);
+    u.dq7 = uk(6);
+    u.dVs = uk(7);
 
     return u;
+}
+
+Slack vectorToSlack(const SlackVector &sk)
+{
+    Slack s;
+    s.selcol = sk[0];
+    s.sing = sk[1];
+    return s;
 }
 
 State arrayToState(double *xk)
 {
     State x;
-    x.X     = xk[0];
-    x.Y     = xk[1];
-    x.phi   = xk[2];
-    x.vx    = xk[3];
-    x.vy    = xk[4];
-    x.r     = xk[5];
-    x.s     = xk[6];
-    x.D     = xk[7];
-    x.delta = xk[8];
-    x.vs    = xk[9];
+    x.q1 = xk[0];
+    x.q2 = xk[1];
+    x.q3 = xk[2];
+    x.q4 = xk[3];
+    x.q5 = xk[4];
+    x.q6 = xk[5];
+    x.q7 = xk[6];
+    x.s  = xk[7];
+    x.vs = xk[8];
 
     return x;
 }
@@ -86,11 +138,23 @@ State arrayToState(double *xk)
 Input arrayToInput(double *uk)
 {
     Input u;
-    u.dD     = uk[0];
-    u.dDelta = uk[1];
-    u.dVs    = uk[2];
+    u.dq1 = uk[0];
+    u.dq2 = uk[1];
+    u.dq3 = uk[2];
+    u.dq4 = uk[3];
+    u.dq5 = uk[4];
+    u.dq6 = uk[5];
+    u.dq7 = uk[6];
+    u.dVs = uk[7];
 
     return u;
 }
 
+Slack arrayToSlack(double *sk)
+{
+    Slack s;
+    s.selcol = sk[0];
+    s.sing = sk[1];
+    return s;
+}
 }

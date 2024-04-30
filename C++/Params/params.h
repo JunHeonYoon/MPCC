@@ -28,46 +28,46 @@ namespace mpcc{
 //used namespace
 using json = nlohmann::json;
 
-// dynamic model parameter class 
+// // dynamic model parameter class 
 class Param{
 public:
-    double Cm1;
-    double Cm2;
-    double Cr0;
-    double Cr2;
+//     double Cm1;
+//     double Cm2;
+//     double Cr0;
+//     double Cr2;
 
-    double Br;
-    double Cr;
-    double Dr;
+//     double Br;
+//     double Cr;
+//     double Dr;
 
-    double Bf;
-    double Cf;
-    double Df;
+//     double Bf;
+//     double Cf;
+//     double Df;
 
-    double m;
-    double Iz;
-    double lf;
-    double lr;
+//     double m;
+//     double Iz;
+//     double lf;
+//     double lr;
 
-    double car_l;
-    double car_w;
+//     double car_l;
+//     double car_w;
 
-    double g;
+//     double g;
 
-    double r_in; // length from track center to inner boundary 
-    double r_out; // length from track center to outter boundary
+//     double r_in; // length from track center to inner boundary 
+//     double r_out; // length from track center to outter boundary
 
     double max_dist_proj;
 
-    double e_long; // tire specific ellipse parameters (tire contraints)
-    double e_eps;
+//     double e_long; // tire specific ellipse parameters (tire contraints)
+//     double e_eps;
 
-    double max_alpha; // maximum slip angle for front tire
+//     double max_alpha; // maximum slip angle for front tire
 
-    double initial_velocity; // control input is delta_velocity, so we ahve to define initial value
+    double desired_ee_velocity; // desired end-effector velocity
     double s_trust_region;
 
-    double vx_zero;
+//     double vx_zero;
 
     Param();
     Param(std::string file);
@@ -81,32 +81,21 @@ public:
     double q_c_N_mult; // weight multiplication for terminal 
     double q_l;        // weight for lag error
     double q_vs;       // weight for velocity of path parameter
-    double q_r;        // weight for yaw rate (angular velocity)
-    double q_r_N_mult; // weight multiplication for terminal
 
     // Heading cost
-    double q_mu; // weight for heading cost
+    double q_ori; // weight for heading cost
 
+    // Input cost
+    double r_dq;     // weight for joint velocity
+    double r_dVs;    // weight for accelerate of path parameter
+    double r_ee;     // weight for EE velocity error
 
-    double q_beta;     // weight for slip
-    int beta_kin_cost; // whether to use beta_kin_cost(=1) or beta_cost
+    // Soft constraint cost
+    double sc_quad_selcol;
+    double sc_quad_sing;
 
-    // Input cost (real input and input(delta))
-    double r_D;     // weight for d(driving comment)
-    double r_delta; // weight for steering change
-    double r_vs;    // weight for 
-    double r_dD;
-    double r_dDelta;
-    double r_dVs;
-
-
-    double sc_quad_track;
-    double sc_quad_tire;
-    double sc_quad_alpha;
-
-    double sc_lin_track;
-    double sc_lin_tire;
-    double sc_lin_alpha;
+    double sc_lin_selcol;
+    double sc_lin_sing;
 
     CostParam();
     CostParam(std::string file);
@@ -116,70 +105,86 @@ public:
 class BoundsParam{
 public:
     /// @brief  Lower bound of state
-    /// @param X_l (double) lower bound of X
-    /// @param Y_l (double) lower bound of Y
-    /// @param phi_l (double) lower bound of phi (yaw)
-    /// @param vx_l (double) lower bound of vx 
-    /// @param vy_l (double) lower bound of vy 
-    /// @param r_l (double) lower bound of r (yaw rate) 
-    /// @param s_l (double) lower bound of s (path param) 
-    /// @param D_l (double) lower bound of D (driving command) 
-    /// @param delta_l (double) lower bound of delta (steering) 
+    /// @param q1_l (double) lower bound of q1
+    /// @param q2_l (double) lower bound of q2
+    /// @param q3_l (double) lower bound of q3
+    /// @param q4_l (double) lower bound of q4
+    /// @param q5_l (double) lower bound of q5
+    /// @param q6_l (double) lower bound of q6
+    /// @param q7_l (double) lower bound of q7
+    /// @param s_l  (double) lower bound of s
     /// @param vs_l (double) lower bound of vs
     struct LowerStateBounds{
-        double X_l;
-        double Y_l;
-        double phi_l;
-        double vx_l;
-        double vy_l;
-        double r_l;
+        double q1_l;
+        double q2_l;
+        double q3_l;
+        double q4_l;
+        double q5_l;
+        double q6_l;
+        double q7_l;
         double s_l;
-        double D_l;
-        double delta_l;
         double vs_l;
     };
 
     /// @brief  Upper bound of state
-    /// @param X_l (double) upper bound of X
-    /// @param Y_l (double) upper bound of Y
-    /// @param phi_l (double) upper bound of phi (yaw)
-    /// @param vx_l (double) upper bound of vx 
-    /// @param vy_l (double) upper bound of vy 
-    /// @param r_l (double) upper bound of r (yaw rate) 
-    /// @param s_l (double) upper bound of s (path param) 
-    /// @param D_l (double) upper bound of D (driving command) 
-    /// @param delta_l (double) upper bound of delta (steering angle) 
-    /// @param vs_l (double) upper bound of vs
+    /// @param q1_u (double) upper bound of q1
+    /// @param q2_u (double) upper bound of q2
+    /// @param q3_u (double) upper bound of q3
+    /// @param q4_u (double) upper bound of q4
+    /// @param q5_u (double) upper bound of q5
+    /// @param q6_u (double) upper bound of q6
+    /// @param q7_u (double) upper bound of q7
+    /// @param s_u  (double) upper bound of s
+    /// @param vs_u (double) upper bound of vs
     struct UpperStateBounds{
-        double X_u;
-        double Y_u;
-        double phi_u;
-        double vx_u;
-        double vy_u;
-        double r_u;
+        double q1_u;
+        double q2_u;
+        double q3_u;
+        double q4_u;
+        double q5_u;
+        double q6_u;
+        double q7_u;
         double s_u;
-        double D_u;
-        double delta_u;
         double vs_u;
     };
 
     /// @brief  Lower bound of control input
-    /// @param dD_l (double) lower bound of dD (driving command) 
-    /// @param dDelta_l (double) lower bound of dDelta (steering angle) 
+    /// @param dq1_l (double) lower bound of dq1
+    /// @param dq2_l (double) lower bound of dq2
+    /// @param dq3_l (double) lower bound of dq3
+    /// @param dq4_l (double) lower bound of dq4
+    /// @param dq5_l (double) lower bound of dq5
+    /// @param dq6_l (double) lower bound of dq6
+    /// @param dq7_l (double) lower bound of dq7
     /// @param dVs_l (double) lower bound of dVs
     struct LowerInputBounds{
-        double dD_l;
-        double dDelta_l;
+        double dq1_l;
+        double dq2_l;
+        double dq3_l;
+        double dq4_l;
+        double dq5_l;
+        double dq6_l;
+        double dq7_l;
         double dVs_l;
     };
 
     /// @brief  Upper bound of control input
-    /// @param dD_l (double) upper bound of dD (driving command) 
-    /// @param dDelta_l (double) upper bound of dDelta (steering angle) 
-    /// @param dVs_l (double) upper bound of dVs
+    /// @param dq1_u (double) upper bound of dq1
+    /// @param dq2_u (double) upper bound of dq2
+    /// @param dq3_u (double) upper bound of dq3
+    /// @param dq4_u (double) upper bound of dq4
+    /// @param dq5_u (double) upper bound of dq5
+    /// @param dq6_u (double) upper bound of dq6
+    /// @param dq7_u (double) upper bound of dq7
+    /// @param dVs_u (double) upper bound of dVs
     struct UpperInputBounds{
-        double dD_u;
-        double dDelta_u;
+        double dq1_u;
+        double dq2_u;
+        double dq3_u;
+        double dq4_u;
+        double dq5_u;
+        double dq6_u;
+        double dq7_u;
         double dVs_u;
     };
 

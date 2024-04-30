@@ -20,7 +20,9 @@
 #include "config.h"
 #include "Spline/arc_length_spline.h"
 #include "Model/model.h"
+#include "SelfCollision/SelfCollisionModel.h"
 namespace mpcc{
+
 /// @brief polytopic inequality constraint matrix and bound vectors:
 // dl <= C xk + D uk <= du
 /// @param C (Eigen::MatrixXd) polytopic state constraints
@@ -35,13 +37,15 @@ struct ConstrainsMatrix {
     d_MPC du;   //upper bounds
 };
 
-/// @brief 1-D inequality constraint wrt state:
-// dl_i <= C_i xk<= du_i
-/// @param C_i (Eigen::MatrixXd) polytopic input constraints
+/// @brief 1-D inequality constraint wrt state and input:
+// dl_i <= C_i xk + D_i uk<= du_i
+/// @param C_i (Eigen::MatrixXd) polytopic state constraints
+/// @param D_i (Eigen::MatrixXd) polytopic input constraints
 /// @param dl (double) lower bounds
 /// @param du (double) upper bounds
 struct OneDConstraint {
     const C_i_MPC C_i;
+    const D_i_MPC D_i;
     const double dl_i;
     const double du_i;
 };
@@ -49,7 +53,7 @@ struct OneDConstraint {
 class Constraints {
 public:
     Constraints();
-    Constraints(double Ts,const PathToJson &path);
+    Constraints(double Ts,const PathToJson &path,std::shared_ptr<RobotModel> robot,std::shared_ptr<SelCollNNmodel> selcolNN);
     
     /// @brief compute all the polytopic state constraints given current state
     /// @param track (ArcLengthSpline) reference track
@@ -59,34 +63,36 @@ public:
     ConstrainsMatrix getConstraints(const ArcLengthSpline &track,const State &x,const Input &u) const;
 
 private:
-    /// @brief compute 1-D track inequality constraint given current state
-    /// @param track (ArcLengthSpline) reference track
+    /// @brief compute self-collision inequality constraint given current state and input
     /// @param x (State) current state
-    /// @return (OneDConstraint) constraint matrix and bound wrt state
-    OneDConstraint getTrackConstraints(const ArcLengthSpline &track,const State &x) const;
+    /// @param u (ControlInput) current control input
+    /// @return (ConstrainsMatrix) constraint matrix and bound wrt state and input
+    OneDConstraint getSelcollConstraint(const State &x,const Input &u) const;
 
-    /// @brief compute 1-D tire friction elipse inequality constraint given current state
-    /// @param x (State) current state
-    /// @return (OneDConstraint) constraint matrix and bound wrt state
-    OneDConstraint getTireConstraintRear(const State &x) const;
 
-    /// @brief compute tire friction constraint jacobian wrt current state
+    /// @brief compute Singularity inequality constraint given current state and input
     /// @param x (State) current state
-    /// @return (Eigen::MatrixXd) tire friction constraint jacobian
-    C_i_MPC getTireConstraintRearJac(const State &x) const;
+    /// @param u (ControlInput) current control input
+    /// @return (Eigen::MatrixXd) constraint matrix and bound wrt state and input
+    OneDConstraint getSingularConstraint(const State &x,const Input &u) const;
 
-    /// @brief compute 1-D slip angle inequality constraint given current state
-    /// @param x (State) current state
-    /// @return (Eigen::MatrixXd) tire friction constraint jacobian
-    OneDConstraint getAlphaConstraintFront(const State &x) const;
 
-    /// @brief compute slip angle constraint jacobian wrt current state
-    /// @param x (State) current state
-    /// @return (Eigen::MatrixXd) slip angle constraint jacobian
-    C_i_MPC getAlphaConstraintFrontJac(const State &x) const;
+    /// @brief compute Relaxed Barrier Function of h
+    /// @param delta (double) switching point from logarithm to quadratic function
+    /// @param h(double) input value
+    /// @return (double) RBF value
+    double getRBF(double delta, double h) const;
+
+    /// @brief compute derivative ofRelaxed Barrier Function wrt h
+    /// @param delta (double) switching point from logarithm to quadratic function
+    /// @param h(double) input value
+    /// @return (double) derivation RBF value
+    double getDRBF(double delta, double h) const;
 
     Model model_;
     Param param_;
+    std::shared_ptr<RobotModel> robot_;
+    std::shared_ptr<SelCollNNmodel> selcolNN_;
 };
 }
 

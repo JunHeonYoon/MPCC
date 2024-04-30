@@ -28,7 +28,8 @@ struct OptVariables;
 struct Stage;
 class SolverInterface {
 public:
-    virtual std::array<OptVariables,N+1> solveMPC(std::array<Stage,N+1> &stages,const State &x0,int *status) = 0;
+    // virtual std::array<OptVariables,N+1> solveMPC(std::array<Stage,N+1> &stages,const State &x0,int *status) = 0;
+    virtual std::array<OptVariables,N+1> solveMPC(std::array<Stage,N+1> &stages,const std::array<OptVariables,N+1> &initial_guess,int *status) = 0;
     virtual ~SolverInterface(){
         std::cout << "Deleting Solver Interface" << std::endl;
     }

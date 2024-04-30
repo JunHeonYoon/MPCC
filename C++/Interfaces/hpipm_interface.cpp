@@ -16,6 +16,7 @@
 
 #include "hpipm_interface.h"
 #include "MPC/mpc.h"
+#include <hpipm_d_ocp_qp_utils.h>
 namespace mpcc{
 void HpipmInterface::setDynamics(std::array<Stage,N+1> &stages,const State &x0)
 {
@@ -198,20 +199,39 @@ void HpipmInterface::setSoftConstraints(std::array<Stage,N+1> &stages)
     }
 }
 
-
-std::array<OptVariables,N+1> HpipmInterface::solveMPC(std::array<Stage,N+1> &stages, const State &x0, int *status)
+void HpipmInterface::setInitialGuess(const std::array<OptVariables,N+1> &initial_guess)
 {
-    setDynamics(stages,x0);
+    for(int i=0;i<=N;i++)
+    {
+        initial_x_[i] = stateToVector(initial_guess[i].xk).data();
+        initial_u_[i] = inputToVector(initial_guess[i].uk).data();
+    }
+}
+
+
+// std::array<OptVariables,N+1> HpipmInterface::solveMPC(std::array<Stage,N+1> &stages, const State &x0, int *status)
+std::array<OptVariables,N+1> HpipmInterface::solveMPC(std::array<Stage,N+1> &stages, const std::array<OptVariables,N+1> &initial_guess, int *status)
+{
+    // setDynamics(stages,x0);
+    setDynamics(stages,initial_guess[0].xk);
     setCost(stages);
-    setBounds(stages,x0);
+    // setBounds(stages,x0);
+    setBounds(stages,initial_guess[0].xk);
     setPolytopicConstraints(stages);
     setSoftConstraints(stages);
+    setInitialGuess(initial_guess);
 //    print_data();
 
     std::array<OptVariables,N+1> opt_solution = Solve(status);
-    opt_solution[0].xk = x0;
+    // opt_solution[0].xk = x0;
+    opt_solution[0].xk = initial_guess[0].xk;
 
     return opt_solution;
+}
+
+double HpipmInterface::getObj()
+{
+    return obj_;
 }
 
 std::array<OptVariables,N+1> HpipmInterface::Solve(int *status)
@@ -245,16 +265,16 @@ std::array<OptVariables,N+1> HpipmInterface::Solve(int *status)
     // ipm arg
 
     int ipm_arg_size = d_ocp_qp_ipm_arg_memsize(&dim);
-    printf("\nipm arg size = %d\n", ipm_arg_size);
+    // printf("\nipm arg size = %d\n", ipm_arg_size);
     void *ipm_arg_mem = malloc(ipm_arg_size);
 
     struct d_ocp_qp_ipm_arg arg;
     d_ocp_qp_ipm_arg_create(&dim, &arg, ipm_arg_mem);
 
 //    enum hpipm_mode mode = SPEED_ABS;
-    enum hpipm_mode mode = SPEED;
+    // enum hpipm_mode mode = SPEED;
 //    enum hpipm_mode mode = BALANCE;
-//    enum hpipm_mode mode = ROBUST;
+   enum hpipm_mode mode = ROBUST;
 
 //    int mode = 1;
     double mu0 = 1e2;
@@ -264,7 +284,7 @@ std::array<OptVariables,N+1> HpipmInterface::Solve(int *status)
     double tol_ineq = 1e-6;
     double tol_comp = 1e-6;
     double reg_prim = 1e-12;
-    int warm_start = 0;
+    int warm_start = 1;
     int pred_corr = 1;
     int ric_alg = 0;
 
@@ -290,7 +310,13 @@ std::array<OptVariables,N+1> HpipmInterface::Solve(int *status)
     struct d_ocp_qp_ipm_ws workspace;
     d_ocp_qp_ipm_ws_create(&dim, &arg, &workspace, ipm_mem);
 
-    int hpipm_return; // 0 normal; 1 max iter; 2 linesearch issues?
+    for(int i=0;i<=N;i++)
+    {
+        d_ocp_qp_sol_set_x(i,initial_x_[i],&qp_sol);
+        d_ocp_qp_sol_set_u(i,initial_u_[i],&qp_sol);
+    }
+
+    int hpipm_return; // 0 QP solved; 1 max iter; 2 min step reached
 
     struct timeval tv0, tv1;
 
@@ -300,9 +326,9 @@ std::array<OptVariables,N+1> HpipmInterface::Solve(int *status)
     gettimeofday(&tv1, nullptr); // stop
     double time_ocp_ipm = (tv1.tv_usec-tv0.tv_usec)/(1e6);
 
-    printf("comp time = %f\n", time_ocp_ipm);
-    printf("exitflag %d\n", hpipm_return);
-    printf("ipm iter = %d\n", workspace.iter);
+    // printf("comp time = %f\n", time_ocp_ipm);
+    // printf("exitflag %d\n", hpipm_return);
+    // printf("ipm iter = %d\n", workspace.iter);
 
     // extract and print solution
     int ii;
@@ -311,25 +337,20 @@ std::array<OptVariables,N+1> HpipmInterface::Solve(int *status)
         if(nu_[ii]>nu_max)
             nu_max = nu_[ii];
     double *u = (double*)malloc(nu_max*sizeof(double));
-//    printf("\nu = \n");
-    for(ii=0; ii<=N; ii++)
-    {
-        d_ocp_qp_sol_get_u(ii, &qp_sol, u);
-//        d_print_mat(1, nu_[ii], u, 1);
-    }
+
     int nx_max = nx_[0];
     for(ii=1; ii<=N; ii++)
         if(nx_[ii]>nx_max)
             nx_max = nx_[ii];
     double *x = (double*)malloc(nx_max*sizeof(double));
-//    printf("\nx = \n");
-    for(ii=0; ii<=N; ii++)
-    {
-        d_ocp_qp_sol_get_x(ii, &qp_sol, x);
-//        d_print_mat(1, nx_[ii], x, 1);
-    }
 
-
+    int ns_max = nsbx_[0] + nsbu_[0] + nsg_[0];
+    for(ii=1; ii<=N; ii++)
+        if(nsbx_[ii] + nsbu_[ii] + nsg_[ii]>ns_max)
+            ns_max = nsbx_[ii] + nsbu_[ii] + nsg_[ii];
+    double *sl = (double*)malloc(ns_max*sizeof(double));
+    double *su = (double*)malloc(ns_max*sizeof(double));
+    
     std::array<OptVariables,N+1> optimal_solution;
     optimal_solution[0].xk.setZero();
     for(int i=1;i<=N;i++){
@@ -343,6 +364,13 @@ std::array<OptVariables,N+1> HpipmInterface::Solve(int *status)
     }
     optimal_solution[N].uk.setZero();
 
+    for(int i=0;i<=N;i++){
+        d_ocp_qp_sol_get_sl(i, &qp_sol, sl);
+        d_ocp_qp_sol_get_su(i, &qp_sol, su);
+        optimal_solution[i].slk = arrayToSlack(sl);
+        optimal_solution[i].suk = arrayToSlack(su);
+    }
+
     /************************************************
     * print ipm statistics
     ************************************************/
@@ -352,12 +380,24 @@ std::array<OptVariables,N+1> HpipmInterface::Solve(int *status)
     double res_eq; d_ocp_qp_ipm_get_max_res_eq(&workspace, &res_eq);
     double res_ineq; d_ocp_qp_ipm_get_max_res_ineq(&workspace, &res_ineq);
     double res_comp; d_ocp_qp_ipm_get_max_res_comp(&workspace, &res_comp);
+    d_ocp_qp_ipm_get_obj(&workspace, &obj_);
     double *stat; d_ocp_qp_ipm_get_stat(&workspace, &stat);
     int stat_m; d_ocp_qp_ipm_get_stat_m(&workspace, &stat_m);
+        printf("==============================================================================================================");
+        printf("\nipm return = %d\n", hpipm_return);
+        printf("\nipm residuals max: res_g = %e, res_b = %e, res_d = %e, res_m = %e\n", res_stat, res_eq, res_ineq, res_comp);
+        printf("\nipm objective = %e\n", obj_);
+
+        printf("\nipm iter = %d\n", iter);
+        printf("\nocp ipm time        = %e [s]\n", time_ocp_ipm);
+        printf("\nalpha_aff\tmu_aff\t\tsigma\t\talpha_prim\talpha_dual\tmu\t\tres_stat\tres_eq\t\tres_ineq\tres_comp\tobj\t\tlq fact\t\titref pred\titref corr\tlin res stat\tlin res eq\tlin res ineq\tlin res comp\n");
+        d_print_exp_tran_mat(stat_m, iter+1, stat, stat_m);
+        printf("==============================================================================================================\n");
+
 
 //    printf("\nipm return = %d\n", hpipm_return);
 //    printf("\nipm residuals max: res_g = %e, res_b = %e, res_d = %e, res_m = %e\n", res_stat, res_eq, res_ineq, res_comp);
-//
+
 //    printf("\nipm iter = %d\n", iter);
 //    printf("\nalpha_aff\tmu_aff\t\tsigma\t\talpha\t\tmu\t\tres_stat\tres_eq\t\tres_ineq\tres_comp\n");
 //    d_print_exp_tran_mat(stat_m, iter+1, stat, stat_m);
@@ -370,6 +410,8 @@ std::array<OptVariables,N+1> HpipmInterface::Solve(int *status)
 
     free(u);
     free(x);
+    free(sl);
+    free(su);
 
     *status = hpipm_return;
 

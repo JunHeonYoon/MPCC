@@ -29,22 +29,45 @@ Track::Track(std::string file)
     X = Eigen::Map<Eigen::VectorXd>(x.data(), x.size());
     std::vector<double> y = jsonTrack["Y"];
     Y = Eigen::Map<Eigen::VectorXd>(y.data(), y.size());
-    
-    std::vector<double> x_inner = jsonTrack["X_i"];
-    X_inner = Eigen::Map<Eigen::VectorXd>(x_inner.data(), x_inner.size());
-    std::vector<double> y_inner = jsonTrack["Y_i"];
-    Y_inner = Eigen::Map<Eigen::VectorXd>(y_inner.data(), y_inner.size());
-
-    std::vector<double> x_outer = jsonTrack["X_o"];
-    X_outer = Eigen::Map<Eigen::VectorXd>(x_outer.data(), x_outer.size());
-    std::vector<double> y_outer = jsonTrack["Y_o"];
-    Y_outer = Eigen::Map<Eigen::VectorXd>(y_outer.data(), y_outer.size());
+    std::vector<double> z = jsonTrack["Z"];
+    Z = Eigen::Map<Eigen::VectorXd>(z.data(), z.size());
+    // std::vector<double> r11 = jsonTrack["R11"];
+    // R11 = Eigen::Map<Eigen::VectorXd>(r11.data(), r11.size());
+    // std::vector<double> r12 = jsonTrack["R12"];
+    // R12 = Eigen::Map<Eigen::VectorXd>(r12.data(), r12.size());
+    // std::vector<double> r13 = jsonTrack["R13"];
+    // R13 = Eigen::Map<Eigen::VectorXd>(r13.data(), r13.size());
+    // std::vector<double> r21 = jsonTrack["R21"];
+    // R21 = Eigen::Map<Eigen::VectorXd>(r21.data(), r21.size());
+    // std::vector<double> r22 = jsonTrack["R22"];
+    // R22 = Eigen::Map<Eigen::VectorXd>(r22.data(), r22.size());
+    // std::vector<double> r23 = jsonTrack["R23"];
+    // R23 = Eigen::Map<Eigen::VectorXd>(r23.data(), r23.size());
+    // std::vector<double> r31 = jsonTrack["R31"];
+    // R31 = Eigen::Map<Eigen::VectorXd>(r31.data(), r31.size());
+    // std::vector<double> r32 = jsonTrack["R32"];
+    // R32 = Eigen::Map<Eigen::VectorXd>(r32.data(), r32.size());
+    // std::vector<double> r33 = jsonTrack["R33"];
+    // R33 = Eigen::Map<Eigen::VectorXd>(r33.data(), r33.size());
 }
 
-TrackPos Track::getTrack()
+TrackPos Track::getTrack(Eigen::Vector3d init_position)
 {
-    return {Eigen::Map<Eigen::VectorXd>(X.data(), X.size()), Eigen::Map<Eigen::VectorXd>(Y.data(), Y.size()),
-            Eigen::Map<Eigen::VectorXd>(X_inner.data(), X_inner.size()), Eigen::Map<Eigen::VectorXd>(Y_inner.data(), Y_inner.size()),
-            Eigen::Map<Eigen::VectorXd>(X_outer.data(), X_outer.size()), Eigen::Map<Eigen::VectorXd>(Y_outer.data(), Y_outer.size())};
+    X = X.array() - X(0) + init_position(0);
+    Y = Y.array() - Y(0) + init_position(1);
+    Z = Z.array() - Z(0) + init_position(2);
+    return {Eigen::Map<Eigen::VectorXd>(X.data(), X.size()), 
+            Eigen::Map<Eigen::VectorXd>(Y.data(), Y.size()),
+            Eigen::Map<Eigen::VectorXd>(Z.data(), Z.size()),
+            // Eigen::Map<Eigen::VectorXd>(R11.data(), R11.size()),
+            // Eigen::Map<Eigen::VectorXd>(R12.data(), R12.size()),
+            // Eigen::Map<Eigen::VectorXd>(R13.data(), R13.size()),
+            // Eigen::Map<Eigen::VectorXd>(R21.data(), R21.size()),
+            // Eigen::Map<Eigen::VectorXd>(R22.data(), R22.size()),
+            // Eigen::Map<Eigen::VectorXd>(R23.data(), R23.size()),
+            // Eigen::Map<Eigen::VectorXd>(R31.data(), R31.size()),
+            // Eigen::Map<Eigen::VectorXd>(R32.data(), R32.size()),
+            // Eigen::Map<Eigen::VectorXd>(R33.data(), R33.size())
+            };
 }
 }

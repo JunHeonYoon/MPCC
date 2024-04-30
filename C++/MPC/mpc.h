@@ -29,6 +29,7 @@
 
 #include "Interfaces/solver_interface.h"
 #include "Interfaces/hpipm_interface.h"
+#include "Interfaces/osqp_interface.h"
 
 #include <array>
 #include <memory>
@@ -39,15 +40,19 @@
 namespace mpcc{
 
 /// @brief parameters for optimization, state and control input of MPC
-/// @param xk (State) state
-/// @param uk (Input) control input
+/// @param xk  (State) state
+/// @param uk  (Input) control input
+/// @param slk (Slack) lower slack variable 
+/// @param suk (Slack) upper slack variable 
 struct OptVariables {
     State xk;
     Input uk;
+    Slack suk;
+    Slack slk;
 };
 
 /// @brief dynamic model, cost, constraint matrix in a stage for MPC 
-/// @param lin_model (LinModelMatrix) linear matrix of car model
+/// @param lin_model (LinModelMatrix) linear matrix of robot model
 /// @param cost_mat (CostMatrix) cost matrix 
 /// @param constrains_mat (ConstrainsMatrix) constraint matrix
 /// @param u_bounds_x (Eigen::VectorXd) upper bound of state
@@ -93,7 +98,7 @@ struct MPCReturn {
 class MPC {
 public:
     MPC();
-    MPC(int n_sqp, int n_reset, double sqp_mixing, double Ts,const PathToJson &path);
+    MPC(int n_sqp, int n_reset, double sqp_mixing, double Ts,const PathToJson &path,std::shared_ptr<RobotModel> robot, std::shared_ptr<SelCollNNmodel> selcolNN);
 
     /// @brief run MPC by sqp given current state
     /// @param x0 (State) current state
@@ -103,7 +108,8 @@ public:
     /// @brief set track given X-Y path data
     /// @param X (Eigen::VectorXd) X path data
     /// @param Y (Eigen::VectorXd) Y path data
-    void setTrack(const Eigen::VectorXd &X, const Eigen::VectorXd &Y);
+    /// @param Z (Eigen::VectorXd) Z path data
+    void setTrack(const Eigen::VectorXd &X, const Eigen::VectorXd &Y,const Eigen::VectorXd &Z);
 
 private:
     /// @brief MPC whole stage data (model, cost constraint) by initial variables
@@ -135,6 +141,11 @@ private:
     /// @return std::array<OptVariables,N+1> denormalized MPC solution
     std::array<OptVariables,N+1> deNormalizeSolution(const std::array<OptVariables,N+1> &solution);
 
+    /// @brief normalize MPC solution 
+    /// @param solution (std::array<OptVariables,N+1>) raw MPC solution
+    /// @return std::array<OptVariables,N+1> normalized MPC solution
+    std::array<OptVariables,N+1> normalizeSolution(const std::array<OptVariables,N+1> &solution);
+
     /// @brief to be warmstart, update initial variables for MPC
     /// @param x0 (State) solution of MPC before time step
     void updateInitialGuess(const State &x0);
@@ -153,15 +164,19 @@ private:
     std::array<OptVariables, N + 1> sqpSolutionUpdate(const std::array<OptVariables, N + 1> &last_solution,
                                                       const std::array<OptVariables, N + 1> &current_solution);
 
+    double constraint_norm(const VectorXd &constr, const VectorXd &l, const VectorXd &u);
+
     bool valid_initial_guess_;
 
     std::array<Stage, N + 1> stages_;
+    // std::array<Stage, N + 1> stages_denor_;
 
     std::array<OptVariables, N + 1> initial_guess_;
+    std::array<OptVariables, N + 1> initial_guess_nor_;
     std::array<OptVariables, N + 1> optimal_solution_;
 
-    int n_sqp_; // number of iteration for sqp
-    double sqp_mixing_; // mixing ratio
+    int max_n_sqp_; // maximum number of iteration for sqp
+    double max_n_sqp_linesearch_; // maximum number of iteration for line search in sqp
     int n_non_solves_;
     int n_no_solves_sqp_;
     int n_reset_; // threshhold for reset the initial guess
@@ -177,6 +192,9 @@ private:
     Bounds bounds_;
     NormalizationParam normalization_param_;
     Param param_;
+
+    std::shared_ptr<RobotModel> robot_;
+    std::shared_ptr<SelCollNNmodel> selcolNN_;
 
     std::unique_ptr<SolverInterface> solver_interface_;
 };

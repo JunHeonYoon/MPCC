@@ -29,7 +29,7 @@ git clone "$repository_hpipm" "$localFolder_hpipm"
 repository_matplotlib="https://github.com/lava/matplotlib-cpp.git"
 localFolder_matplotlib="External/matplotlib"
 git clone "$repository_matplotlib" "$localFolder_matplotlib"
-## clone eigne
+## clone eigen
 repository_eigen="https://gitlab.com/libeigen/eigen.git"
 localFolder_eigen="External/Eigen"
 git clone "$repository_eigen" "$localFolder_eigen"
@@ -37,9 +37,37 @@ git clone "$repository_eigen" "$localFolder_eigen"
 repository_json="https://github.com/nlohmann/json.git"
 localFolder_json="External/Json"
 git clone "$repository_json" "$localFolder_json"
-
+## clone rbdl
+repository_rbdl="https://github.com/rbdl/rbdl.git"
+localFolder_rbdl="External/rbdl"
+git clone "$repository_rbdl" "$localFolder_rbdl"
+## clone osqp
+repository_osqp="https://github.com/osqp/osqp.git"
+localFolder_osqp="External/osqp"
+git clone "$repository_osqp" "$localFolder_osqp"
+## clone osqp-eigen
+repository_osqpeigen="https://github.com/robotology/osqp-eigen.git"
+localFolder_osqpeigen="External/osqp-eigen"
+git clone "$repository_osqpeigen" "$localFolder_osqpeigen"
 
 cd External/blasfeo
+mkdir -p build
+mkdir -p lib
+cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=$(realpath ../lib)
+make
+make install
+
+cd ../../Eigen
+mkdir -p build
+# mkdir -p lib
+cd build
+# cmake .. -DCMAKE_INSTALL_PREFIX=$(realpath ../lib)
+cmake .. -DCMAKE_INSTALL_PREFIX=$(realpath ../lib)
+make
+sudo make install
+
+cd ../../rbdl
 mkdir -p build
 mkdir -p lib
 cd build
@@ -52,5 +80,22 @@ mkdir -p build
 mkdir -p lib
 cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=$(realpath ../lib) -DBLASFEO_PATH=$(realpath ../../blasfeo/lib)
+make
+make install
+
+cd ../../osqp
+mkdir -p build
+# mkdir -p lib
+cd build
+# cmake .. -DCMAKE_INSTALL_PREFIX=$(realpath ../lib)
+cmake .. 
+make
+sudo make install
+
+cd ../../osqp-eigen
+mkdir -p build
+mkdir -p lib
+cd build
+cmake .. -DCMAKE_INSTALL_PREFIX=$(realpath ../lib)
 make
 make install

@@ -31,46 +31,46 @@ Param::Param(std::string file){
     json jsonModel;
     iModel >> jsonModel;
     
-    // Model Parameters
-    Cm1 = jsonModel["Cm1"];
-    Cm2 = jsonModel["Cm2"];
-    Cr0 = jsonModel["Cr0"];
-    Cr2 = jsonModel["Cr2"];
+//     // Model Parameters
+//     Cm1 = jsonModel["Cm1"];
+//     Cm2 = jsonModel["Cm2"];
+//     Cr0 = jsonModel["Cr0"];
+//     Cr2 = jsonModel["Cr2"];
 
-    Br 	= jsonModel["Br"];
-    Cr 	= jsonModel["Cr"];
-    Dr 	= jsonModel["Dr"];
+//     Br 	= jsonModel["Br"];
+//     Cr 	= jsonModel["Cr"];
+//     Dr 	= jsonModel["Dr"];
 
-    Bf 	= jsonModel["Bf"];
-    Cf 	= jsonModel["Cf"];
-    Df 	= jsonModel["Df"];
+//     Bf 	= jsonModel["Bf"];
+//     Cf 	= jsonModel["Cf"];
+//     Df 	= jsonModel["Df"];
 
-    m 	= jsonModel["m"];
-    Iz 	= jsonModel["Iz"];
-    lf 	= jsonModel["lf"];
-    lr 	= jsonModel["lr"];
+//     m 	= jsonModel["m"];
+//     Iz 	= jsonModel["Iz"];
+//     lf 	= jsonModel["lf"];
+//     lr 	= jsonModel["lr"];
 
-    car_l = jsonModel["car_l"];
-    car_w = jsonModel["car_w"];
+//     car_l = jsonModel["car_l"];
+//     car_w = jsonModel["car_w"];
     
-    g = jsonModel["g"];
+//     g = jsonModel["g"];
 
-    //Constraint Parameters
-    r_in = jsonModel["R_in"];
-    r_out = jsonModel["R_out"];
+//     //Constraint Parameters
+//     r_in = jsonModel["R_in"];
+//     r_out = jsonModel["R_out"];
 
     max_dist_proj = jsonModel["max_dist_proj"];
 
-    e_long = jsonModel["E_long"];
-    e_eps = jsonModel["E_eps"];
+//     e_long = jsonModel["E_long"];
+//     e_eps = jsonModel["E_eps"];
 
-    max_alpha = jsonModel["maxAlpha"];
+//     max_alpha = jsonModel["maxAlpha"];
 
-    // initial warm start and trust region (model dependent)
-    initial_velocity = jsonModel["initial_velocity"];
+//     // initial warm start and trust region (model dependent)
+    desired_ee_velocity = jsonModel["desired_ee_velocity"];
     s_trust_region = jsonModel["s_trust_region"];
 
-    vx_zero = jsonModel["vx_zero"];
+//     vx_zero = jsonModel["vx_zero"];
 }
 
 CostParam::CostParam(){
@@ -88,34 +88,22 @@ CostParam::CostParam(std::string file){
     iCost >> jsonCost;
 
     q_c = jsonCost["qC"];
+    q_c_N_mult = jsonCost["qCNmult"];
     q_l = jsonCost["qL"];
     q_vs = jsonCost["qVs"];
 
-    q_mu = jsonCost["qMu"];
+    q_ori = jsonCost["qOri"];
 
-    q_r = jsonCost["qR"];
-
-    q_beta = jsonCost["qBeta"];
-    beta_kin_cost = 1;//jsonCost["betaKin"];
-
-    r_D = jsonCost["rD"];
-    r_delta = jsonCost["rDelta"];
-    r_vs = jsonCost["rVs"];
-
-    r_dD = jsonCost["rdD"];
-    r_dDelta = jsonCost["rdDelta"];
+    r_dq = jsonCost["rdq"];
     r_dVs = jsonCost["rdVs"];
+    r_ee = jsonCost["rEE"];
 
-    q_c_N_mult = jsonCost["qCNmult"];
-    q_r_N_mult = jsonCost["qRNmult"];
 
-    sc_quad_track = jsonCost["sc_quad_track"];
-    sc_quad_tire= jsonCost["sc_quad_tire"];
-    sc_quad_alpha = jsonCost["sc_quad_alpha"];
+    sc_quad_selcol = jsonCost["sc_quad_selcol"];
+    sc_quad_sing= jsonCost["sc_quad_sing"];
 
-    sc_lin_track = jsonCost["sc_lin_track"];
-    sc_lin_tire = jsonCost["sc_lin_tire"];
-    sc_lin_alpha = jsonCost["sc_lin_alpha"];
+    sc_lin_selcol = jsonCost["sc_lin_selcol"];
+    sc_lin_sing = jsonCost["sc_lin_sing"];
 }
 
 BoundsParam::BoundsParam() {
@@ -133,34 +121,42 @@ BoundsParam::BoundsParam(std::string file) {
     json jsonBounds;
     iBounds >> jsonBounds;
 
-    lower_state_bounds.X_l = jsonBounds["Xl"];
-    lower_state_bounds.Y_l = jsonBounds["Yl"];
-    lower_state_bounds.phi_l = jsonBounds["phil"];
-    lower_state_bounds.vx_l = jsonBounds["vxl"];
-    lower_state_bounds.vy_l = jsonBounds["vyl"];
-    lower_state_bounds.r_l = jsonBounds["rl"];
-    lower_state_bounds.s_l = jsonBounds["sl"];
-    lower_state_bounds.D_l = jsonBounds["Dl"];
-    lower_state_bounds.delta_l = jsonBounds["deltal"];
+    lower_state_bounds.q1_l = jsonBounds["q1l"];
+    lower_state_bounds.q2_l = jsonBounds["q2l"];
+    lower_state_bounds.q3_l = jsonBounds["q3l"];
+    lower_state_bounds.q4_l = jsonBounds["q4l"];
+    lower_state_bounds.q5_l = jsonBounds["q5l"];
+    lower_state_bounds.q6_l = jsonBounds["q6l"];
+    lower_state_bounds.q7_l = jsonBounds["q7l"];
+    lower_state_bounds.s_l  = jsonBounds["sl"];
     lower_state_bounds.vs_l = jsonBounds["vsl"];
 
-    upper_state_bounds.X_u = jsonBounds["Xu"];
-    upper_state_bounds.Y_u = jsonBounds["Yu"];
-    upper_state_bounds.phi_u = jsonBounds["phiu"];
-    upper_state_bounds.vx_u = jsonBounds["vxu"];
-    upper_state_bounds.vy_u = jsonBounds["vyu"];
-    upper_state_bounds.r_u = jsonBounds["ru"];
-    upper_state_bounds.s_u = jsonBounds["su"];
-    upper_state_bounds.D_u = jsonBounds["Du"];
-    upper_state_bounds.delta_u = jsonBounds["deltau"];
+    upper_state_bounds.q1_u = jsonBounds["q1u"];
+    upper_state_bounds.q2_u = jsonBounds["q2u"];
+    upper_state_bounds.q3_u = jsonBounds["q3u"];
+    upper_state_bounds.q4_u = jsonBounds["q4u"];
+    upper_state_bounds.q5_u = jsonBounds["q5u"];
+    upper_state_bounds.q6_u = jsonBounds["q6u"];
+    upper_state_bounds.q7_u = jsonBounds["q7u"];
+    upper_state_bounds.s_u  = jsonBounds["su"];
     upper_state_bounds.vs_u = jsonBounds["vsu"];
 
-    lower_input_bounds.dD_l = jsonBounds["dDl"];
-    lower_input_bounds.dDelta_l = jsonBounds["dDeltal"];
+    lower_input_bounds.dq1_l = jsonBounds["dq1l"];
+    lower_input_bounds.dq2_l = jsonBounds["dq2l"];
+    lower_input_bounds.dq3_l = jsonBounds["dq3l"];
+    lower_input_bounds.dq4_l = jsonBounds["dq4l"];
+    lower_input_bounds.dq5_l = jsonBounds["dq5l"];
+    lower_input_bounds.dq6_l = jsonBounds["dq6l"];
+    lower_input_bounds.dq7_l = jsonBounds["dq7l"];
     lower_input_bounds.dVs_l = jsonBounds["dVsl"];
 
-    upper_input_bounds.dD_u = jsonBounds["dDu"];
-    upper_input_bounds.dDelta_u = jsonBounds["dDeltau"];
+    upper_input_bounds.dq1_u = jsonBounds["dq1u"];
+    upper_input_bounds.dq2_u = jsonBounds["dq2u"];
+    upper_input_bounds.dq3_u = jsonBounds["dq3u"];
+    upper_input_bounds.dq4_u = jsonBounds["dq4u"];
+    upper_input_bounds.dq5_u = jsonBounds["dq5u"];
+    upper_input_bounds.dq6_u = jsonBounds["dq6u"];
+    upper_input_bounds.dq7_u = jsonBounds["dq7u"];
     upper_input_bounds.dVs_u = jsonBounds["dVsu"];
 }
 
@@ -180,15 +176,14 @@ NormalizationParam::NormalizationParam(std::string file)
     iNorm >> jsonNorm;
 
     T_x.setIdentity();
-    T_x(si_index.X,si_index.X) = jsonNorm["X"];
-    T_x(si_index.Y,si_index.Y) = jsonNorm["Y"];
-    T_x(si_index.phi,si_index.phi) = jsonNorm["phi"];
-    T_x(si_index.vx,si_index.vx) = jsonNorm["vx"];
-    T_x(si_index.vy,si_index.vy) = jsonNorm["vy"];
-    T_x(si_index.r,si_index.r) = jsonNorm["r"];
+    T_x(si_index.q1,si_index.q1) = jsonNorm["q1"];
+    T_x(si_index.q2,si_index.q2) = jsonNorm["q2"];
+    T_x(si_index.q3,si_index.q3) = jsonNorm["q3"];
+    T_x(si_index.q4,si_index.q4) = jsonNorm["q4"];
+    T_x(si_index.q5,si_index.q5) = jsonNorm["q5"];
+    T_x(si_index.q6,si_index.q6) = jsonNorm["q6"];
+    T_x(si_index.q7,si_index.q7) = jsonNorm["q7"];
     T_x(si_index.s,si_index.s) = jsonNorm["s"];
-    T_x(si_index.D,si_index.D) = jsonNorm["D"];
-    T_x(si_index.delta,si_index.delta) = jsonNorm["delta"];
     T_x(si_index.vs,si_index.vs) = jsonNorm["vs"];
 
 
@@ -199,8 +194,13 @@ NormalizationParam::NormalizationParam(std::string file)
     }
 
     T_u.setIdentity();
-    T_u(si_index.dD,si_index.dD) = jsonNorm["dD"];
-    T_u(si_index.dDelta,si_index.dDelta) = jsonNorm["dDelta"];
+    T_u(si_index.dq1,si_index.q1) = jsonNorm["dq1"];
+    T_u(si_index.dq2,si_index.q2) = jsonNorm["dq2"];
+    T_u(si_index.dq3,si_index.q3) = jsonNorm["dq3"];
+    T_u(si_index.dq4,si_index.q4) = jsonNorm["dq4"];
+    T_u(si_index.dq5,si_index.q5) = jsonNorm["dq5"];
+    T_u(si_index.dq6,si_index.q6) = jsonNorm["dq6"];
+    T_u(si_index.dq7,si_index.q7) = jsonNorm["dq7"];
     T_u(si_index.dVs,si_index.dVs) = jsonNorm["dVs"];
 
     T_u_inv.setIdentity();

@@ -27,41 +27,45 @@
 namespace mpcc{
 
 // #define MAX(a,b) (a < b) ? b : a
+#define PANDA_DOF 7
 
-#define NX 10 // [X, Y, phi(yaw), vx, vy, r(yaw), s(path param), D(drivind command), delta(steering), vs]
-#define NU 3  // [dD(drivind command), dDelta(steering), dVs]
+#define NX 9  // [joint angle, s(path param), vs]
+#define NU 8  // [djoint angle, dVs]
 
-#define NB 13 // max number of bounds
-#define NPC 3 // number of polytopic constraints
-#define NS 3  // number of soft constraints
+// #define NB 13 // max number of bounds
+#define NPC 2 // number of polytopic constraints: Self collision, Singularity
+#define NS 2  // number of soft constraints: Self collision, Singularity
 
-static constexpr int N = 60;
-static constexpr double INF = 1E5;
+static constexpr int N = 10;
+static constexpr double INF = 1E30;
 static constexpr int N_SPLINE = 5000;
 
 /// @brief Index of State, Control input and soft constraints
 struct StateInputIndex{
     // Index of State
-    int X = 0;
-    int Y = 1;
-    int phi = 2;
-    int vx = 3;
-    int vy = 4;
-    int r = 5;
-    int s = 6;
-    int D = 7;
-    int delta = 8;
-    int vs = 9;
+    int q1 = 0;
+    int q2 = 1;
+    int q3 = 2;
+    int q4 = 3;
+    int q5 = 4;
+    int q6 = 5;
+    int q7 = 6;
+    int s  = 7;
+    int vs = 8;
 
     // Index of control input
-    int dD = 0;
-    int dDelta = 1;
-    int dVs = 2;
+    int dq1 = 0;
+    int dq2 = 1;
+    int dq3 = 2;
+    int dq4 = 3;
+    int dq5 = 4;
+    int dq6 = 5;
+    int dq7 = 6;
+    int dVs = 7;
 
     // Index of soft constraints
-    int con_track = 0;
-    int con_tire = 1;
-    int con_alpha = 2; // alpha_f is slip angle of front tire
+    int con_selcol = 0; // self collision 
+    int con_sing = 1;   // singularity
 };
 
 static const StateInputIndex si_index;

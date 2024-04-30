@@ -19,88 +19,122 @@
 
 #include "config.h"
 namespace mpcc{
-/// @brief State of car system
-/// @param X   x position wrt global frame (double)
-/// @param Y   y position wrt global frame (double)
-/// @param phi yaw wrt global frame (double)
-/// @param vx  x velocity wrt car frame (double)
-/// @param vy  y velocity wrt car frame (double)
-/// @param r  yaw dot wrt car frame (double)
-/// @param s  path parameter, arc length (double)
-/// @param D  driving command (1: full throttle, -1: full braking) (double)
-/// @param delta steering angle (double)
-/// @param vs velocity of path parameter (double)
+/// @brief State of manipulator system
+/// @param q1  (double) joint angle 
+/// @param q2  (double) joint angle 
+/// @param q3  (double) joint angle 
+/// @param q4  (double) joint angle 
+/// @param q5  (double) joint angle 
+/// @param q6  (double) joint angle 
+/// @param q7  (double) joint angle 
+/// @param s   (double) path parameter, arc length 
+/// @param vs  (double) velocity of path parameter 
 struct State{ 
-    double X;
-    double Y;
-    double phi; // yaw of robot
-    double vx;
-    double vy;
-    double r; // phi dot
-    double s; // path parameter (arc length)
-    double D; // driving command (1: full throttle, -1: full braking)
-    double delta; // steering angle
+    double q1; // joint angle
+    double q2; // joint angle
+    double q3; // joint angle 
+    double q4; // joint angle
+    double q5; // joint angle
+    double q6; // joint angle
+    double q7; // joint angle
+    double s;  // path parameter (arc length)
     double vs; // velocity of path parameter
 
     void setZero()
     {
-        X = 0.0;
-        Y = 0.0;
-        phi = 0.0;
-        vx = 0.0;
-        vy = 0.0;
-        r = 0.0;
+        q1 = 0.0;
+        q2 = 0.0;
+        q3 = 0.0;
+        q4 = 0.0;
+        q5 = 0.0;
+        q6 = 0.0;
+        q7 = 0.0;
         s = 0.0;
-        D = 0.0;
-        delta = 0.0;
         vs = 0.0;
     }
-    /// @brief mapping phi to [-pi, pi] and s to [0, track_length]
+    /// @brief mapping s to [0, track_length]
     void unwrap(double track_length)
     {
-        if (phi > M_PI)
-            phi -= 2.0 * M_PI;
-        if (phi < -M_PI)
-            phi += 2.0 * M_PI;
-
         if (s > track_length)
             s -= track_length;
         if (s < 0)
             s += track_length;
     }
-    /// @brief set minimum x velocity
-    void vxNonZero(double vx_zero)
-    {
-        if(vx < vx_zero){
-            vx = vx_zero;
-            vy = 0.0;
-            r = 0.0;
-            delta = 0.0;
-        }
-    }
+    // /// @brief set minimum x velocity
+    // void vxNonZero(double vx_zero)
+    // {
+    //     if(vx < vx_zero){
+    //         vx = vx_zero;
+    //         vy = 0.0;
+    //         r = 0.0;
+    //         delta = 0.0;
+    //     }
+    // }
 };
-/// @brief Control input of car system
-/// @param dD   change of driving command (double)
-/// @param dDelta   change of steering angle (double)
-/// @param dVs change of velocity of path parameter (double)
+
+/// @brief Control input of manipulator system
+/// @param dq1 (double) velocity of joint angle
+/// @param dq2 (double) velocity of joint angle
+/// @param dq3 (double) velocity of joint angle
+/// @param dq4 (double) velocity of joint angle
+/// @param dq5 (double) velocity of joint angle
+/// @param dq6 (double) velocity of joint angle
+/// @param dq7 (double) velocity of joint angle
+/// @param dVs (double) change of velocity of path parameter 
 struct Input{
-    double dD;
-    double dDelta;
+    double dq1;
+    double dq2;
+    double dq3;
+    double dq4;
+    double dq5;
+    double dq6;
+    double dq7;
     double dVs;
 
     void setZero()
     {
-        dD = 0.0;
-        dDelta = 0.0;
+        dq1 = 0.0;
+        dq2 = 0.0;
+        dq3 = 0.0;
+        dq4 = 0.0;
+        dq5 = 0.0;
+        dq6 = 0.0;
+        dq7 = 0.0;
         dVs = 0.0;
     }
+    /// @brief set minimum joint velocity
+    void dqNonZero()
+    {
+        if(fabs(dq1) < 1e-9) dq1 = 1e-3;
+        if(fabs(dq2) < 1e-9) dq2 = 1e-3;
+        if(fabs(dq3) < 1e-9) dq3 = 1e-3;
+        if(fabs(dq4) < 1e-9) dq4 = 1e-3;
+        if(fabs(dq5) < 1e-9) dq5 = 1e-3;
+        if(fabs(dq6) < 1e-9) dq6 = 1e-3;
+        if(fabs(dq7) < 1e-9) dq7 = 1e-3;
+    }
 };
+
+/// @brief  Slack variables wrt constraints
+/// @param selcol (double) self collision constraint
+/// @param sing (double) singularity constraint
+struct Slack{
+    double selcol;
+    double sing;
+
+    void setZero()
+    {
+        selcol = 0.0;
+        sing = 0.0;
+    }
+};
+
 /// @brief path of JSON files
-/// @param param_path path of model parameter (std::string)
-/// @param cost_path   path of cost parameter(std::string)
-/// @param bounds_path  path of bound parameter (std::string)
-/// @param track_path  path of track (std::string)
-/// @param normalization_path  path of normalization parameter (std::string) 
+/// @param param_path         (std::string) path of model parameter 
+/// @param cost_path          (std::string) path of cost parameter
+/// @param bounds_path        (std::string) path of bound parameter 
+/// @param track_path         (std::string) path of track 
+/// @param normalization_path (std::string) path of normalization parameter 
 struct PathToJson{
     const std::string param_path;
     const std::string cost_path;
@@ -110,7 +144,9 @@ struct PathToJson{
 };
 
 typedef Eigen::Matrix<double,NX,1> StateVector;
+typedef Eigen::Matrix<double,PANDA_DOF,1> JointVector;
 typedef Eigen::Matrix<double,NU,1> InputVector;
+typedef Eigen::Matrix<double,NS,1> SlackVector;
 
 // x_(k+1) = Ax + Bu + g
 typedef Eigen::Matrix<double,NX,NX> A_MPC; 
@@ -127,6 +163,7 @@ typedef Eigen::Matrix<double,NU,1> r_MPC;
 typedef Eigen::Matrix<double,NPC,NX> C_MPC;
 typedef Eigen::Matrix<double,1,NX> C_i_MPC;
 typedef Eigen::Matrix<double,NPC,NU> D_MPC;
+typedef Eigen::Matrix<double,1,NU> D_i_MPC;
 typedef Eigen::Matrix<double,NPC,1> d_MPC;
 
 typedef Eigen::Matrix<double,NS,NS> Z_MPC;
@@ -141,12 +178,17 @@ typedef Eigen::Matrix<double,NU,1> Bounds_u;
 typedef Eigen::Matrix<double,NS,1> Bounds_s;
 
 StateVector stateToVector(const State &x);
+JointVector stateToJointVector(const State &x);
 InputVector inputToVector(const Input &u);
+JointVector inputToJointVector(const Input &u);
+SlackVector slackToVector(const Slack &s);
 
 State vectorToState(const StateVector &xk);
 Input vectorToInput(const InputVector &uk);
+Slack vectorToSlack(const SlackVector &sk);
 
 State arrayToState(double *xk);
 Input arrayToInput(double *uk);
+Slack arrayToSlack(double *sk);
 }
 #endif //MPCC_TYPES_H

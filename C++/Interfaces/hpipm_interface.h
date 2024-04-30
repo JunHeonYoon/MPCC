@@ -57,7 +57,9 @@ struct HpipmBound {
 
 class HpipmInterface : public SolverInterface {
 public:
-    std::array<OptVariables,N+1> solveMPC(std::array<Stage,N+1> &stages,const State &x0, int *status);
+    // std::array<OptVariables,N+1> solveMPC(std::array<Stage,N+1> &stages,const State &x0, int *status);
+    std::array<OptVariables,N+1> solveMPC(std::array<Stage,N+1> &stages,const std::array<OptVariables,N+1> &initial_guess, int *status);
+    double getObj();
 
     ~HpipmInterface(){
         std::cout << "Deleting Hpipm Interface" << std::endl;
@@ -124,15 +126,24 @@ private:
     // order is not really clear
     int *hidxs_[N+1];
 
+    // Initial guess about state and control input
+    double *initial_x_[N+1];
+    double *initial_u_[N+1];
+
     //bounds that are different to stages bounds and need to be stored somewhere such the a pointer can point
     std::array<HpipmBound,N+1> hpipm_bounds_;
     Eigen::Matrix<double,NX,1> b0_;
+
+    // object value
+    double obj_;
+    
 
     void setDynamics(std::array<Stage,N+1> &stages,const State &x0);
     void setCost(std::array<Stage,N+1> &stages);
     void setBounds(std::array<Stage,N+1> &stages,const State &x0);
     void setPolytopicConstraints(std::array<Stage,N+1> &stages);
     void setSoftConstraints(std::array<Stage,N+1> &stages);
+    void setInitialGuess(const std::array<OptVariables,N+1> &initial_guess);
 
     std::array<OptVariables,N+1> Solve(int *status);
 

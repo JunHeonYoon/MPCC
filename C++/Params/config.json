@@ -1,11 +1,10 @@
 
 {
-  "n_sqp": 2,
+  "max_n_sqp": 10,
   "n_reset": 5,
-  "sqp_mixing" : 0.8,
-  "n_sim": 600,
-  "Ts": 0.02,
-  "v0": 0.2,
+  "max_n_sqp_linesearch" : 5,
+  "n_sim": 1000,
+  "Ts": 0.01,
   
   "model_path": "Params/model.json",
   "cost_path": "Params/cost.json",

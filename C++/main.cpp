@@ -18,7 +18,8 @@
 // #include "Tests/model_integrator_test.h"
 // #include "Tests/constratins_test.h"
 // #include "Tests/cost_test.h"
-
+#include <iostream>
+#include <fstream>
 #include "MPC/mpc.h"
 #include "Model/integrator.h"
 #include "Params/track.h"
@@ -41,24 +42,71 @@ int main() {
                            jsonConfig["normalization_path"]};
 
     Integrator integrator = Integrator(jsonConfig["Ts"],json_paths);
-    Plotting plotter = Plotting(jsonConfig["Ts"],json_paths);
+    // Plotting plotter = Plotting(jsonConfig["Ts"],json_paths);
 
-    Track track = Track(json_paths.track_path);
-    TrackPos track_xy = track.getTrack();
+    std::shared_ptr<RobotModel> robot;
+    robot = std::make_shared<mpcc::RobotModel>();
+    std::shared_ptr<SelCollNNmodel> selcolNN;
+    selcolNN = std::make_shared<SelCollNNmodel>();
+    Eigen::Vector2d n_hidden;
+    n_hidden << 128, 128;
+    selcolNN->setNeuralNetwork(PANDA_DOF, 1, n_hidden, true);
 
     std::list<MPCReturn> log;
-    MPC mpc(jsonConfig["n_sqp"],jsonConfig["n_reset"],jsonConfig["sqp_mixing"],jsonConfig["Ts"],json_paths);
-    mpc.setTrack(track_xy.X,track_xy.Y);
-    const double phi_0 = std::atan2(track_xy.Y(1) - track_xy.Y(0),track_xy.X(1) - track_xy.X(0));
-    State x0 = {track_xy.X(0),track_xy.Y(0),phi_0,jsonConfig["v0"],0,0,0,0.5,0,jsonConfig["v0"]};
+    MPC mpc(jsonConfig["max_n_sqp"],jsonConfig["n_reset"],jsonConfig["max_n_sqp_linesearch"],jsonConfig["Ts"],json_paths,robot,selcolNN);
+
+    State x0 = {0, 0, 0, -M_PI/2, 0, M_PI/2, M_PI/4, 0, 0};
+    JointVector q0 = stateToJointVector(x0);
+    Eigen::Vector3d ee_pos0 = robot->getEEPosition(q0);
+
+    Track track = Track(json_paths.track_path);
+    TrackPos track_xyz = track.getTrack(ee_pos0);
+
+    mpc.setTrack(track_xyz.X,track_xyz.Y,track_xyz.Z);
+
+    ofstream debug_file;
+    debug_file.open("debug.txt");
+
+    std::cout << "============================ Init ============================"<<std::endl;
+    std::cout << "q now    :\t";
+    std::cout << std::fixed << std::setprecision(3) << q0.transpose() << std::endl;
+    std::cout << "x        :\t";
+    std::cout << std::fixed << std::setprecision(3) << robot->getEEPosition(q0).transpose() << std::endl;
+    std::cout << "R        :\t" << std::endl;
+    std::cout << std::fixed << std::setprecision(3) << robot->getEEOrientation(q0) << std::endl;
+    std::cout << "J        :\t" << std::endl;
+    std::cout << std::fixed << std::setprecision(3) << robot->getJacobianv(q0) << std::endl;
+    std::cout << "==============================================================="<<std::endl;
+    debug_file << q0.transpose() << std::endl;
+
+    // for(int i=0;i<jsonConfig["n_sim"];i++)
     for(int i=0;i<jsonConfig["n_sim"];i++)
     {
+        std::cout<<"sim step: "<< i << std::endl;
         MPCReturn mpc_sol = mpc.runMPC(x0);
         x0 = integrator.simTimeStep(x0,mpc_sol.u0,jsonConfig["Ts"]);
+
+        std::cout << "==============================================================="<<std::endl;
+        std::cout << "time step: " << i << std::endl;;
+        std::cout << "q now    :\t";
+        std::cout << std::fixed << std::setprecision(3) << stateToJointVector(x0).transpose() << std::endl;
+        std::cout << "q_dot now    :\t";
+        std::cout << std::fixed << std::setprecision(3) << inputToJointVector(mpc_sol.u0).transpose()  << std::endl;
+        std::cout << "x        :\t";
+        std::cout << std::fixed << std::setprecision(3) << robot->getEEPosition(stateToJointVector(x0)).transpose() << std::endl;
+        std::cout << "x_dot    :\t";
+        std::cout << std::fixed << std::setprecision(3) << (robot->getJacobianv(stateToJointVector(x0))*inputToJointVector(mpc_sol.u0)).transpose() << std::endl;
+        std::cout << std::fixed << std::setprecision(3) << (robot->getJacobianv(stateToJointVector(x0))*inputToJointVector(mpc_sol.u0)).norm() << std::endl;
+        // std::cout << "R        :\t" << std::endl;
+        // std::cout << std::fixed << std::setprecision(3) << robot->getEEOrientation(stateToJointVector(x0)) << std::endl;
+        // std::cout << "J        :\t" << std::endl;
+        // std::cout << std::fixed << std::setprecision(3) << robot->getJacobianv(stateToJointVector(x0)) << std::endl;
+        std::cout << "==============================================================="<<std::endl;
+        debug_file << stateToJointVector(x0).transpose() << std::endl;
         log.push_back(mpc_sol);
     }
-    plotter.plotRun(log,track_xy);
-    plotter.plotSim(log,track_xy);
+    // plotter.plotRun(log,track_xyz);
+    // plotter.plotSim(log,track_xyz);
 
     double mean_time = 0.0;
     double max_time = 0.0;
