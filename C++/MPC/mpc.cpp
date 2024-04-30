@@ -59,39 +59,23 @@ void MPC::setStage(const State &xk, const Input &uk, const int time_step)
 {
     stages_[time_step].nx = NX;
     stages_[time_step].nu = NU;
-    // stages_[time_step].nx = NX;
-    // stages_[time_step].nu = NU;
 
     if(time_step == 0)
     {
         stages_[time_step].ng = 0;
         stages_[time_step].ns = 0;
-        // stages_[time_step].ng = 0;
-        // stages_[time_step].ns = 0;
     }
     else
     {
         stages_[time_step].ng = NPC;
         stages_[time_step].ns = NS;
-        // stages_[time_step].ng = NPC;
-        // stages_[time_step].ns = NS;
     }
 
     State xk_nz = xk;
     // xk/_nz.vxNonZero(param_.vx_zero);
-    // stages_[time_step].cost_mat = cost_.getCost(track_,xk_nz,uk,time_step);
-    // stages_[time_step].lin_model = model_.getLinModel(xk_nz,uk);
-    // stages_[time_step].constrains_mat = constraints_.getConstraints(track_,xk_nz,uk);
     stages_[time_step].cost_mat = normalizeCost(cost_.getCost(track_,xk_nz,uk,time_step));
     stages_[time_step].lin_model = normalizeDynamics(model_.getLinModel(xk_nz,uk));
     stages_[time_step].constrains_mat = normalizeCon(constraints_.getConstraints(track_,xk_nz,uk));
-
-    // stages_[time_step].l_bounds_x = bounds_.getBoundsLX();
-    // stages_[time_step].u_bounds_x = bounds_.getBoundsUX();
-    // stages_[time_step].l_bounds_u = bounds_.getBoundsLU();
-    // stages_[time_step].u_bounds_u = bounds_.getBoundsUU();
-    // stages_[time_step].l_bounds_s = bounds_.getBoundsLS();
-    // stages_[time_step].u_bounds_s = bounds_.getBoundsUS();
     stages_[time_step].l_bounds_x = normalization_param_.T_x_inv*bounds_.getBoundsLX();
     stages_[time_step].u_bounds_x = normalization_param_.T_x_inv*bounds_.getBoundsUX();
     stages_[time_step].l_bounds_u = normalization_param_.T_u_inv*bounds_.getBoundsLU();
@@ -99,8 +83,6 @@ void MPC::setStage(const State &xk, const Input &uk, const int time_step)
     stages_[time_step].l_bounds_s = normalization_param_.T_s_inv*bounds_.getBoundsLS();
     stages_[time_step].u_bounds_s = normalization_param_.T_s_inv*bounds_.getBoundsUS();
 
-    // stages_[time_step].l_bounds_x(si_index.s) = initial_guess_[time_step].xk.s - param_.s_trust_region;//*initial_guess_[time_step].xk.vs;
-    // stages_[time_step].u_bounds_x(si_index.s) = initial_guess_[time_step].xk.s + param_.s_trust_region;//*initial_guess_[time_step].xk.vs;
     stages_[time_step].l_bounds_x(si_index.s) = normalization_param_.T_x_inv(si_index.s,si_index.s)*
                                                 (initial_guess_[time_step].xk.s - param_.s_trust_region);//*initial_guess_[time_step].xk.vs;
     stages_[time_step].u_bounds_x(si_index.s) = normalization_param_.T_x_inv(si_index.s,si_index.s)*
@@ -112,11 +94,12 @@ CostMatrix MPC::normalizeCost(const CostMatrix &cost_mat)
 {
     const Q_MPC Q = normalization_param_.T_x*cost_mat.Q*normalization_param_.T_x;
     const R_MPC R = normalization_param_.T_u*cost_mat.R*normalization_param_.T_u;
+    const S_MPC S = normalization_param_.T_x*cost_mat.S*normalization_param_.T_u;
     const q_MPC q = normalization_param_.T_x*cost_mat.q;
     const r_MPC r = normalization_param_.T_u*cost_mat.r;
     const Z_MPC Z = normalization_param_.T_s*cost_mat.Z*normalization_param_.T_s;
     const z_MPC z = normalization_param_.T_s*cost_mat.z;
-    return {Q,R,S_MPC::Zero(),q,r,Z,z};
+    return {Q,R,S,q,r,Z,z};
 }
 
 LinModelMatrix MPC::normalizeDynamics(const LinModelMatrix &lin_model)

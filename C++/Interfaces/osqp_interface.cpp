@@ -70,6 +70,8 @@ void OsqpInterface::setCost(std::array<Stage,N+1> &stages)
     {
         P_.block(NX*i, NX*i, NX, NX) = stages[i].cost_mat.Q;
         P_.block(NX*(N+1)+NU*i, NX*(N+1)+NU*i, NU, NU) = stages[i].cost_mat.R;
+        P_.block(NX*i, NX*(N+1)+NU*i, NX, NU) = stages[i].cost_mat.S;
+        P_.block(NX*(N+1)+NU*i, NX*i, NU, NX) = stages[i].cost_mat.S.transpose();
         q_.block(NX*i, 0, NX, 1) = stages[i].cost_mat.q;
         q_.block(NX*(N+1)+NU*i, 0, NU, 1) = stages[i].cost_mat.r;
     }
@@ -173,7 +175,7 @@ std::array<OptVariables,N+1> OsqpInterface::solveMPC(std::array<Stage,N+1> &stag
     setInitialGuess(initial_guess);
 //    print_data();
 
-    is_solved_ = Solve(true);
+    is_solved_ = Solve(false);
     solver_.data()->clearHessianMatrix();
     solver_.data()->clearLinearConstraintsMatrix();
     solver_.clearSolverVariables();
@@ -255,7 +257,7 @@ bool OsqpInterface::Solve(bool verbose)
     initial_x = initial_x_;
 
     // settings
-    if (verbose) solver_.settings()->setVerbosity(true);
+    if (!verbose) solver_.settings()->setVerbosity(true);
 
     // set the initial data of the QP solver
     solver_.data()->setNumberOfVariables(n);

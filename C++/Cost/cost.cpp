@@ -145,6 +145,7 @@ CostMatrix Cost::getInputCost(const ArcLengthSpline &track,const State &x, const
     q_MPC q_input_cost = q_MPC::Zero();
     R_MPC R_input_cost = R_MPC::Zero();
     r_MPC r_input_cost = r_MPC::Zero();
+    S_MPC S_input_cost = S_MPC::Zero();
 
     // // compute current EE linear velocity
     const JointVector q = stateToJointVector(x);
@@ -169,6 +170,7 @@ CostMatrix Cost::getInputCost(const ArcLengthSpline &track,const State &x, const
     double dss_ee_vel_error_sqnorm = 2*pow(param_.desired_ee_velocity,2)*track.getSecondDerivative(x.s).squaredNorm();
     Matrix<double, PANDA_DOF, 1> dq_ee_vel_error_sqnorm = 2*Jv.transpose()*ee_vel_error;
     Matrix<double, PANDA_DOF, PANDA_DOF> dqq_ee_vel_error_sqnorm = 2*Jv.transpose()*Jv;
+    Matrix<double, 1, PANDA_DOF> dqs_ee_vel_error_sqnorm = -2*param_.desired_ee_velocity*track.getSecondDerivative(x.s).transpose()*Jv;
 
     double ee_vel_error_sqnorm_s_zero = ds_ee_vel_error_sqnorm - dss_ee_vel_error_sqnorm*x.s;
     Matrix<double, PANDA_DOF, 1> ee_vel_error_sqnorm_dq_zero = dq_ee_vel_error_sqnorm - dqq_ee_vel_error_sqnorm*dq;
@@ -177,6 +179,7 @@ CostMatrix Cost::getInputCost(const ArcLengthSpline &track,const State &x, const
     q_input_cost(si_index.s) = cost_param_.r_ee * ee_vel_error_sqnorm_s_zero;
     R_input_cost.block(si_index.dq1,si_index.dq1,PANDA_DOF,PANDA_DOF) = cost_param_.r_ee * dqq_ee_vel_error_sqnorm;
     r_input_cost.segment(si_index.dq1,PANDA_DOF) = cost_param_.r_ee * ee_vel_error_sqnorm_dq_zero;
+    S_input_cost.block(si_index.s,si_index.dq1,1,PANDA_DOF) = cost_param_.r_ee * dqs_ee_vel_error_sqnorm;
 
     // for acceleration of path parameter
     r_input_cost(si_index.dVs) += cost_param_.r_dVs;
@@ -191,7 +194,7 @@ CostMatrix Cost::getInputCost(const ArcLengthSpline &track,const State &x, const
     R_input_cost(si_index.dq7,si_index.dq7) += 2.0 * cost_param_.r_dq;
 
     // solver interface expects 0.5 u^T R u + r^T u
-    return {Q_MPC::Zero(),R_input_cost,S_MPC::Zero(),q_MPC::Zero(),r_input_cost,Z_MPC::Zero(),z_MPC::Zero()};
+    return {Q_MPC::Zero(),R_input_cost,S_input_cost,q_MPC::Zero(),r_input_cost,Z_MPC::Zero(),z_MPC::Zero()};
 }
 
 CostMatrix Cost::getSoftConstraintCost() const
