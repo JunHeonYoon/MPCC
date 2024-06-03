@@ -1,5 +1,8 @@
 #include "Model/robot_model.h"
 #include "robot_model.h"
+#include <rbdl/addons/urdfreader/urdfreader.h>
+#include <iomanip>
+#include <iostream>
 
 mpcc::RobotModel::RobotModel()
 {
@@ -197,6 +200,9 @@ void mpcc::RobotModel::setPanda(unsigned int base_id, Vector3d base_position, Ma
 		1., 0., 0.,
 		0., 0., -1.,
 		0., 1., 0.
+		// 1., 0., 0.,
+		// 0., 0., 1.,
+		// 0., -1., 0.
 	).finished();
 
 	// link2 to link3
@@ -204,6 +210,9 @@ void mpcc::RobotModel::setPanda(unsigned int base_id, Vector3d base_position, Ma
 		1., 0., 0.,
 		0., 0., 1.,
 		0., -1., 0.
+		// 1., 0., 0.,
+		// 0., 0., -1.,
+		// 0., 1., 0.
 	).finished();
 
 	// link3 to link4
@@ -211,6 +220,9 @@ void mpcc::RobotModel::setPanda(unsigned int base_id, Vector3d base_position, Ma
 		1., 0., 0.,
 		0., 0., 1.,
 		0., -1., 0.
+		// 1., 0., 0.,
+		// 0., 0., -1.,
+		// 0., 1., 0.
 	).finished();
 
 	// link4 to link5
@@ -218,6 +230,9 @@ void mpcc::RobotModel::setPanda(unsigned int base_id, Vector3d base_position, Ma
 		1., 0., 0.,
 		0., 0., -1.,
 		0., 1., 0.
+		// 1., 0., 0.,
+		// 0., 0., 1.,
+		// 0., -1., 0.
 	).finished();
 
 	// link5 to link6
@@ -225,6 +240,9 @@ void mpcc::RobotModel::setPanda(unsigned int base_id, Vector3d base_position, Ma
 		1., 0., 0.,
 		0., 0., 1.,
 		0., -1., 0.
+		// 1., 0., 0.,
+		// 0., 0., -1.,
+		// 0., 1., 0.
 	).finished();
 
 	// link6 to link7
@@ -243,9 +261,12 @@ void mpcc::RobotModel::setPanda(unsigned int base_id, Vector3d base_position, Ma
 
 	// link8 to hand
 	joint_rotation[9] = (Matrix3d() <<
-		0.707107, 0.707107, 0.,
-		-0.707107, 0.707107, 0.,
+		0.707107, -0.707107, 0.,
+	    0.707107, 0.707107, 0.,
 		0., 0., 1.
+		// 0.707107, 0.707107, 0.,
+	    // -0.707107, 0.707107, 0.,
+		// 0., 0., 1.
 	).finished();
 
 	// hand to leftfinger
@@ -287,16 +308,16 @@ void mpcc::RobotModel::setPanda(unsigned int base_id, Vector3d base_position, Ma
 			joint[i] = Joint(JointTypeFixed);
 			body_id[i] = model_->AddBody(base_id, Math::SpatialTransform(joint_rotation[i], joint_position[i]), joint[i], body[i], link_name[i].c_str());
 		}
+		else if(i == 8 || i == 9) // body: link8, hand, joint: link7 to link8, link8 to hand
+		{
+			joint[i] = Joint(JointTypeFixed);
+			body_id[i] = model_->AddBody(body_id[i - 1], Math::SpatialTransform(joint_rotation[i], joint_position[i]), joint[i], body[i], link_name[i].c_str());
+		}
 		else if(i == 10 || i == 11) // body: finger, joint: hand to finger
 		{
 			// joint[i] = Joint(JointTypePrismatic, axis[i]);
 			joint[i] = Joint(JointTypeFixed);
 			body_id[i] = model_->AddBody(body_id[9], Math::SpatialTransform(joint_rotation[i], joint_position[i]), joint[i], body[i], link_name[i].c_str());
-		}
-		else if(i == 8 || i == 9) // body: link8, hand, joint: link7 to link8, link8 to hand
-		{
-			joint[i] = Joint(JointTypeFixed);
-			body_id[i] = model_->AddBody(body_id[i - 1], Math::SpatialTransform(joint_rotation[i], joint_position[i]), joint[i], body[i], link_name[i].c_str());
 		}
 		else
 		{
@@ -305,12 +326,16 @@ void mpcc::RobotModel::setPanda(unsigned int base_id, Vector3d base_position, Ma
 		}
 	}
 
+	// model_ = std::make_shared<RigidBodyDynamics::Model>();
+	// std::string file_path = "/home/yoonjunheon/git/Neural-JSDF/cpp/urdf/panda.urdf";
+	// RigidBodyDynamics::Addons::URDFReadFromFile(file_path.c_str(), model_.get(), true);
+
 	std::string tmp_name = "panda_";
-	for(size_t i=0; i<PANDA_NUM_LINKS; ++i) 
+	for(size_t i=0; i<PANDA_NUM_LINKS-1; ++i) 
 	{
-		body_id_[i] = model_->GetBodyId((tmp_name + "link" + std::to_string(i)).c_str());
+		body_id_[i] = model_->GetBodyId(("panda_link" + std::to_string(i)).c_str());
 	}
-	body_id_[PANDA_NUM_LINKS-1] = model_->GetBodyId((tmp_name + "hand").c_str());
+	body_id_[PANDA_NUM_LINKS-1] = model_->GetBodyId("panda_hand");
 }
 
 void mpcc::RobotModel::setHusky()
@@ -388,6 +413,7 @@ void mpcc::RobotModel::Orientation(const int &frame_id)
 
 void mpcc::RobotModel::Orientation(const int &frame_id, const VectorXd &q)
 {
+	// std::cout<<"body name: " << model_->GetBodyName(body_id_[frame_id - 1]) <<std::endl;
 	rotation_ = CalcBodyWorldOrientation(*model_, q, body_id_[frame_id - 1], true).transpose();
 }
 
@@ -439,7 +465,7 @@ void mpcc::RobotModel::dManipulability(const int &frame_id, const VectorXd &q)
 		double m_1 = mani_;
 		Manipulability(frame_id, q-delta_q);
 		double m_2 = mani_;
-		d_mani_(i) = (m_1 - m_2) / 2*delta;
+		d_mani_(i) = (m_1 - m_2) / (2*delta);
 	}
 }
 

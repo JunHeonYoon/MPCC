@@ -55,21 +55,13 @@ struct State{
     /// @brief mapping s to [0, track_length]
     void unwrap(double track_length)
     {
-        if (s > track_length)
-            s -= track_length;
-        if (s < 0)
-            s += track_length;
+        // if (s > track_length)
+        //     s -= track_length;
+        // if (s < 0)
+        //     s += track_length;
+        s = std::max(0.,std::min(track_length,s));
     }
-    // /// @brief set minimum x velocity
-    // void vxNonZero(double vx_zero)
-    // {
-    //     if(vx < vx_zero){
-    //         vx = vx_zero;
-    //         vy = 0.0;
-    //         r = 0.0;
-    //         delta = 0.0;
-    //     }
-    // }
+
 };
 
 /// @brief Control input of manipulator system
@@ -115,38 +107,25 @@ struct Input{
     }
 };
 
-/// @brief  Slack variables wrt constraints
-/// @param selcol (double) self collision constraint
-/// @param sing (double) singularity constraint
-struct Slack{
-    double selcol;
-    double sing;
-
-    void setZero()
-    {
-        selcol = 0.0;
-        sing = 0.0;
-    }
-};
-
 /// @brief path of JSON files
 /// @param param_path         (std::string) path of model parameter 
 /// @param cost_path          (std::string) path of cost parameter
 /// @param bounds_path        (std::string) path of bound parameter 
 /// @param track_path         (std::string) path of track 
 /// @param normalization_path (std::string) path of normalization parameter 
+/// @param sqo_path           (std::string) path of sqp parameter 
 struct PathToJson{
     const std::string param_path;
     const std::string cost_path;
     const std::string bounds_path;
     const std::string track_path;
     const std::string normalization_path;
+    const std::string sqp_path;
 };
 
 typedef Eigen::Matrix<double,NX,1> StateVector;
 typedef Eigen::Matrix<double,PANDA_DOF,1> JointVector;
 typedef Eigen::Matrix<double,NU,1> InputVector;
-typedef Eigen::Matrix<double,NS,1> SlackVector;
 
 // x_(k+1) = Ax + Bu + g
 typedef Eigen::Matrix<double,NX,NX> A_MPC; 
@@ -166,29 +145,21 @@ typedef Eigen::Matrix<double,NPC,NU> D_MPC;
 typedef Eigen::Matrix<double,1,NU> D_i_MPC;
 typedef Eigen::Matrix<double,NPC,1> d_MPC;
 
-typedef Eigen::Matrix<double,NS,NS> Z_MPC;
-typedef Eigen::Matrix<double,NS,1> z_MPC;
-
 typedef Eigen::Matrix<double,NX,NX> TX_MPC;
 typedef Eigen::Matrix<double,NU,NU> TU_MPC;
-typedef Eigen::Matrix<double,NS,NS> TS_MPC;
 
 typedef Eigen::Matrix<double,NX,1> Bounds_x;
 typedef Eigen::Matrix<double,NU,1> Bounds_u;
-typedef Eigen::Matrix<double,NS,1> Bounds_s;
 
 StateVector stateToVector(const State &x);
 JointVector stateToJointVector(const State &x);
 InputVector inputToVector(const Input &u);
 JointVector inputToJointVector(const Input &u);
-SlackVector slackToVector(const Slack &s);
 
 State vectorToState(const StateVector &xk);
 Input vectorToInput(const InputVector &uk);
-Slack vectorToSlack(const SlackVector &sk);
 
 State arrayToState(double *xk);
 Input arrayToInput(double *uk);
-Slack arrayToSlack(double *sk);
 }
 #endif //MPCC_TYPES_H

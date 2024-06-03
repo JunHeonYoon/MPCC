@@ -15,197 +15,320 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include "osqp_interface.h"
-#include "MPC/mpc.h"
+
 namespace mpcc{
-void OsqpInterface::setDynamics(std::array<Stage,N+1> &stages,const State &x0)
-{
-    A_eq_.resize((N+1)*NX,(N+1)*(NX+NU)); A_eq_.setZero();
-    l_eq_.resize((N+1)*NX,1);             l_eq_.setOnes(); l_eq_ *= -OsqpEigen::INFTY; 
-    u_eq_.resize((N+1)*NX,1);             u_eq_.setOnes(); u_eq_ *= OsqpEigen::INFTY;
-    
-      
-    for(size_t i=0;i<N+1;i++)
-    {
-        if(i==0)
-        {
-            A_eq_.block(0,0,NX,NX) = MatrixXd::Identity(NX,NX);
-            l_eq_.block(0,0,NX,1) = stateToVector(x0);
-            u_eq_.block(0,0,NX,1) = stateToVector(x0);
-        }
-        else
-        {
-            A_eq_.block(NX*i, NX*(i-1), NX, NX) = -stages[i].lin_model.A;
-            A_eq_.block(NX*i, NX*i, NX, NX) = MatrixXd::Identity(NX,NX);
-            A_eq_.block(NX*i, NX*(N+1)+NU*(i-1), NX, NU) = -stages[i].lin_model.B;
-            l_eq_.block(NX*i, 0, NX, 1) = stages[i].lin_model.g;
-            u_eq_.block(NX*i, 0, NX, 1) = stages[i].lin_model.g;
-        }
-    }
+OsqpInterface::OsqpInterface(double Ts,const PathToJson &path,std::shared_ptr<RobotModel> robot, std::shared_ptr<SelCollNNmodel> selcolNN)
+:robot_(robot),
+cost_(Cost(path)),
+model_(Model(Ts,path)),
+constraints_(Constraints(Ts,path,selcolNN)),
+bounds_(BoundsParam(path.bounds_path),Param(path.param_path)),
+normalization_param_(NormalizationParam(path.normalization_path)),
+sqp_param_(SQPParam(path.sqp_path))
+{   
 }
 
-void OsqpInterface::setCost(std::array<Stage,N+1> &stages)
+void OsqpInterface::setTrack(const ArcLengthSpline track)
 {
-    // P_.resize((N+1)*(NX+NU+2*NS),(N+1)*(NX+NU+2*NS)); P_.setZero();
-    // q_.resize((N+1)*(NX+NU+2*NS),1);                  q_.setZero();
-
-    // for(size_t i=0;i<N+1;i++)
-    // {
-    //     P_.block(NX*i, NX*i, NX, NX) = stages[i].cost_mat.Q;
-    //     P_.block(NX*(N+1)+NU*i, NX*(N+1)+NU*i, NU, NU) = stages[i].cost_mat.R;
-    //     q_.block(NX*i, 0, NX, 1) = stages[i].cost_mat.q;
-    //     q_.block(NX*(N+1)+NU*i, 0, NU, 1) = stages[i].cost_mat.r;
-
-    //     if(stages[i].ns != 0)
-    //     {
-    //         P_.block((NX+NU)*(N+1)+NS*i, (NX+NU)*(N+1)+NS*i, NS, NS) = stages[i].cost_mat.Z;
-    //         P_.block((NX+NU+NS)*(N+1)+NS*i, (NX+NU+NS)*(N+1)+NS*i, NS, NS) = stages[i].cost_mat.Z;
-    //         q_.block((NX+NU)*(N+1)+NS*i, 0, NS, 1) = stages[i].cost_mat.z;
-    //         q_.block((NX+NU+NS)*(N+1)+NS*i, 0, NS, 1) = stages[i].cost_mat.z;
-    //     }
-    // }
-    P_.resize((N+1)*(NX+NU),(N+1)*(NX+NU)); P_.setZero();
-    q_.resize((N+1)*(NX+NU),1);                  q_.setZero();
-
-    for(size_t i=0;i<N+1;i++)
-    {
-        P_.block(NX*i, NX*i, NX, NX) = stages[i].cost_mat.Q;
-        P_.block(NX*(N+1)+NU*i, NX*(N+1)+NU*i, NU, NU) = stages[i].cost_mat.R;
-        P_.block(NX*i, NX*(N+1)+NU*i, NX, NU) = stages[i].cost_mat.S;
-        P_.block(NX*(N+1)+NU*i, NX*i, NU, NX) = stages[i].cost_mat.S.transpose();
-        q_.block(NX*i, 0, NX, 1) = stages[i].cost_mat.q;
-        q_.block(NX*(N+1)+NU*i, 0, NU, 1) = stages[i].cost_mat.r;
-    }
-}
-
-void OsqpInterface::setBounds(std::array<Stage,N+1> &stages,const State &x0)
-{
-    // A_ineqb_.resize((N+1)*(NX+NU+2*NS),(N+1)*(NX+NU+2*NS)); A_ineqb_.setZero();
-    // l_ineqb_.resize((N+1)*(NX+NU+2*NS),1);                  l_ineqb_.setOnes(); l_ineqb_ *= -OsqpEigen::INFTY; 
-    // u_ineqb_.resize((N+1)*(NX+NU+2*NS),1);                  u_ineqb_.setOnes(); u_ineqb_ *= OsqpEigen::INFTY;
-
-    // for(size_t i=0;i<N+1;i++)
-    // {
-    //     A_ineqb_.block(NX*i, NX*i, NX, NX) = MatrixXd::Identity(NX, NX);
-    //     A_ineqb_.block(NX*(N+1)+NU*i, NX*(N+1)+NU*i, NU, NU) = MatrixXd::Identity(NU, NU);
-    //     l_ineqb_.block(NX*i, 0, NX, 1) = stages[i].l_bounds_x;
-    //     u_ineqb_.block(NX*i, 0, NX, 1) = stages[i].u_bounds_x;
-    //     l_ineqb_.block(NX*(N+1)+NU*i, 0, NU, 1) = stages[i].l_bounds_u;
-    //     u_ineqb_.block(NX*(N+1)+NU*i, 0, NU, 1) = stages[i].u_bounds_u;
-
-    //     if(stages[i].ns != 0)
-    //     {
-    //         A_ineqb_.block((NX+NU)*(N+1)+NS*i, (NX+NU)*(N+1)+NS*i, NS, NS) = MatrixXd::Identity(NS, NS);
-    //         A_ineqb_.block((NX+NU+NS)*(N+1)+NS*i, (NX+NU+NS)*(N+1)+NS*i, NS, NS) = MatrixXd::Identity(NS, NS);
-    //         l_ineqb_.block((NX+NU)*(N+1)+NS*i, 0, NS, 1) = stages[i].l_bounds_s;
-    //         l_ineqb_.block((NX+NU+NS)*(N+1)+NS*i, 0, NS, 1) = stages[i].u_bounds_s;
-    //     }
-    // }
-
-    A_ineqb_.resize((N+1)*(NX+NU),(N+1)*(NX+NU)); A_ineqb_.setZero();
-    l_ineqb_.resize((N+1)*(NX+NU),1);                  l_ineqb_.setOnes(); l_ineqb_ *= -OsqpEigen::INFTY; 
-    u_ineqb_.resize((N+1)*(NX+NU),1);                  u_ineqb_.setOnes(); u_ineqb_ *= OsqpEigen::INFTY;
-
-    for(size_t i=0;i<N+1;i++)
-    {
-        A_ineqb_.block(NX*i, NX*i, NX, NX) = MatrixXd::Identity(NX, NX);
-        A_ineqb_.block(NX*(N+1)+NU*i, NX*(N+1)+NU*i, NU, NU) = MatrixXd::Identity(NU, NU);
-        l_ineqb_.block(NX*i, 0, NX, 1) = stages[i].l_bounds_x;
-        u_ineqb_.block(NX*i, 0, NX, 1) = stages[i].u_bounds_x;
-        l_ineqb_.block(NX*(N+1)+NU*i, 0, NU, 1) = stages[i].l_bounds_u;
-        u_ineqb_.block(NX*(N+1)+NU*i, 0, NU, 1) = stages[i].u_bounds_u;
-
-    }
-}
-
-void OsqpInterface::setPolytopicConstraints(std::array<Stage,N+1> &stages)
-{
-    // A_ineqp_.resize((N+1)*(2*NPC),(N+1)*(NX+NU+2*NS)); A_ineqp_.setZero();
-    // l_ineqp_.resize((N+1)*(2*NPC),1);                  l_ineqp_.setOnes(); l_ineqp_ *= -OsqpEigen::INFTY; 
-    // u_ineqp_.resize((N+1)*(2*NPC),1);                  u_ineqp_.setOnes(); u_ineqp_ *= OsqpEigen::INFTY;
-    // for(size_t i;i<N+1;i++)
-    // {
-    //     if(stages[i].ng > 0)
-    //     {
-    //         A_ineqp_.block(NPC*i, NX*i, NPC, NX) = stages[i].constrains_mat.C;
-    //         A_ineqp_.block(NPC*i, NX*(N+1)+NU*i, NPC, NU) = stages[i].constrains_mat.D;
-    //         A_ineqp_.block(NPC*i, (NX+NU)*(N+1)+NS*i, NPC, NS) = MatrixXd::Identity(NPC, NS);
-    //         l_ineqp_.block(NPC*i, 0, NPC, 1) = stages[i].constrains_mat.dl;
-
-    //         A_ineqp_.block(NPC*(N+1)+NPC*i, NX*i, NPC, NX) = stages[i].constrains_mat.C;
-    //         A_ineqp_.block(NPC*(N+1)+NPC*i, NX*(N+1)+NU*i, NPC, NU) = stages[i].constrains_mat.D;
-    //         A_ineqp_.block(NPC*(N+1)+NPC*i, (NX+NU)*(N+1)+NS*i, NPC, NS) = -MatrixXd::Identity(NPC, NS);
-    //         u_ineqp_.block(NPC*(N+1)+NPC*i, 0, NPC, 1) = stages[i].constrains_mat.du;
-    //     }
-    // }
-    A_ineqp_.resize((N+1)*NPC,(N+1)*(NX+NU)); A_ineqp_.setZero();
-    l_ineqp_.resize((N+1)*NPC,1);                  l_ineqp_.setOnes(); l_ineqp_ *= -OsqpEigen::INFTY; 
-    u_ineqp_.resize((N+1)*NPC,1);                  u_ineqp_.setOnes(); u_ineqp_ *= OsqpEigen::INFTY;
-    for(size_t i;i<N+1;i++)
-    {
-        if(stages[i].ng > 0)
-        {
-            A_ineqp_.block(NPC*i, NX*i, NPC, NX) = stages[i].constrains_mat.C;
-            A_ineqp_.block(NPC*i, NX*(N+1)+NU*i, NPC, NU) = stages[i].constrains_mat.D;
-            l_ineqp_.block(NPC*i, 0, NPC, 1) = stages[i].constrains_mat.dl;
-            u_ineqp_.block(NPC*i, 0, NPC, 1) = stages[i].constrains_mat.du;
-        }
-    }
+    track_ = track;
 }
 
 void OsqpInterface::setInitialGuess(const std::array<OptVariables,N+1> &initial_guess)
 {
-    initial_x_.resize((N+1)*(NX+NU),1); initial_x_.setZero();
-    for(size_t i=0;i<N+1;i++)
+    initial_guess_ = initial_guess;
+    initial_guess_vec_.setZero(N_var);
+    for(size_t i=0;i<=N; i++)
     {
-        initial_x_.block(NX*i,0,NX,1) = stateToVector(initial_guess[i].xk);
-        initial_x_.block(NX*(N+1)+NU*i,0,NU,1) = inputToVector(initial_guess[i].uk);
+        initial_guess_vec_.segment(NX*i, NX) = stateToVector(initial_guess[i].xk);
+        if(i != N) initial_guess_vec_.segment(NX*(N+1) + NU*i, NU) = inputToVector(initial_guess[i].uk);
     }
 }
 
-
-
-std::array<OptVariables,N+1> OsqpInterface::solveMPC(std::array<Stage,N+1> &stages,const std::array<OptVariables,N+1> &initial_guess, int *status)
+void OsqpInterface::setCost(const std::array<OptVariables,N+1> &initial_guess, 
+                            double *obj, Eigen::VectorXd *grad_obj, Eigen::MatrixXd *hess_obj)
 {
-    // setDynamics(stages,x0);
-    setDynamics(stages,initial_guess[0].xk);
-    setCost(stages);
-    // setBounds(stages,x0);
-    setBounds(stages,initial_guess[0].xk);
-    setPolytopicConstraints(stages);
-    setInitialGuess(initial_guess);
-//    print_data();
+    if(obj) (*obj) = 0;
+    if(grad_obj) grad_obj->setZero(N_var);
+    if(hess_obj) hess_obj->setZero(N_var,N_var);
+    for(size_t i=0; i<=N; i++)
+    {
+        RobotData rbk;
+        rbk.update(stateToJointVector(initial_guess[i].xk), robot_);
 
-    is_solved_ = Solve(false);
-    solver_.data()->clearHessianMatrix();
-    solver_.data()->clearLinearConstraintsMatrix();
-    solver_.clearSolverVariables();
-    solver_.clearSolver();
-    if(is_solved_)
-    {
-        *status = 0;
-        is_solved_ = false;
-        return getSolution();
-    }
-    else
-    {
-        *status = 1;
-        std::array<OptVariables,N+1> zero_solution;
-        for(size_t i=0;i<N+1;i++)
+        double obj_k;
+        CostGrad grad_cost_k;
+        CostHess hess_cost_k;
+        
+        if(obj && !grad_obj && !hess_obj)
         {
-            // zero_solution[i].xk = x0;
-            zero_solution[i].xk = initial_guess[0].xk;
-            zero_solution[i].uk.setZero();
-            zero_solution[i].slk.setZero();
-            zero_solution[i].suk.setZero();
+            cost_.getCost(track_,initial_guess[i].xk,initial_guess[i].uk,rbk,i, &obj_k, NULL,NULL);
         }
-        return zero_solution;
+        else if(obj && grad_obj && !hess_obj)
+        {
+            cost_.getCost(track_,initial_guess[i].xk,initial_guess[i].uk,rbk,i, &obj_k, &grad_cost_k,NULL);
+        }
+        else if(obj && grad_obj && hess_obj)
+        {
+            cost_.getCost(track_,initial_guess[i].xk,initial_guess[i].uk,rbk,i, &obj_k, &grad_cost_k,&hess_cost_k);
+        }
+        if(obj) (*obj) += obj_k;
+        if(grad_obj) grad_obj->segment(NX*i, NX) = normalization_param_.T_x*grad_cost_k.f_x;
+        if(hess_obj) hess_obj->block(NX*i,NX*i,NX,NX) = normalization_param_.T_x*hess_cost_k.f_xx*normalization_param_.T_x;
+        if(i != N)
+        {
+            if(grad_obj) grad_obj->segment(NX*(N+1)+NU*i, NU) = normalization_param_.T_u*grad_cost_k.f_u;
+            if(hess_obj) hess_obj->block(NX*(N+1)+NU*i,NX*(N+1)+NU*i,NU,NU) = normalization_param_.T_u*hess_cost_k.f_uu*normalization_param_.T_u;
+            if(hess_obj) hess_obj->block(NX*i,NX*(N+1)+NU*i,NX,NU) = normalization_param_.T_x*hess_cost_k.f_xu*normalization_param_.T_u;
+            if(hess_obj) hess_obj->block(NX*(N+1)+NU*i,NX*i,NU,NX) = (normalization_param_.T_x*hess_cost_k.f_xu*normalization_param_.T_u).transpose();
+        }
     }
 }
 
-// std::array<OptVariables,N+1> OsqpInterface::Solve(bool verbose)
-bool OsqpInterface::Solve(bool verbose)
+void OsqpInterface::setDynamics(const std::array<OptVariables,N+1> &initial_guess,
+                                Eigen::MatrixXd *jac_constr_eq, Eigen::VectorXd *constr_eq, Eigen::VectorXd *l_eq, Eigen::VectorXd *u_eq)
 {
-    /* 
+    if(jac_constr_eq) jac_constr_eq->setZero(N_eq,N_var);
+    if(constr_eq) constr_eq->setZero(N_eq);
+    if(l_eq) l_eq->setZero(N_eq);
+    if(u_eq) u_eq->setZero(N_eq);
+
+    for(size_t i=0;i<=N;i++)
+    {
+        if(i == 0)
+        {
+            if(jac_constr_eq) jac_constr_eq->block(0,0,NX,NX) = MatrixXd::Identity(NX,NX);
+            if(constr_eq) constr_eq->segment(0,NX) = VectorXd::Zero(NX);
+            if(l_eq) l_eq->segment(0,NX) = VectorXd::Zero(NX);
+            if(u_eq) u_eq->segment(0,NX) = VectorXd::Zero(NX);
+        }
+        else
+        {
+            LinModelMatrix lin_model_prev = model_.getLinModel(initial_guess[i-1].xk,initial_guess[i-1].uk);
+            if(jac_constr_eq)
+            {
+                jac_constr_eq->block(NX*i, NX*(i-1), NX, NX) = -normalization_param_.T_x_inv*lin_model_prev.A*normalization_param_.T_x;
+                jac_constr_eq->block(NX*i, NX*i, NX, NX) = MatrixXd::Identity(NX,NX);
+                jac_constr_eq->block(NX*i, NX*(N+1) + NU*(i-1), NX, NU) = -normalization_param_.T_x_inv*lin_model_prev.B*normalization_param_.T_u;
+            }
+            if(constr_eq) constr_eq->segment(NX*i, NX) = normalization_param_.T_x_inv * (stateToVector(initial_guess[i].xk) - (lin_model_prev.A*stateToVector(initial_guess[i-1].xk) + lin_model_prev.B*inputToVector(initial_guess[i-1].uk) +  lin_model_prev.g));
+            if(l_eq) l_eq->segment(NX*i, NX) = VectorXd::Zero(NX);
+            if(u_eq) u_eq->segment(NX*i, NX) = VectorXd::Zero(NX);
+        }
+    }
+}
+
+void OsqpInterface::setBounds(const std::array<OptVariables,N+1> &initial_guess,
+                              Eigen::MatrixXd *jac_constr_ineqb, Eigen::VectorXd *constr_ineqb, Eigen::VectorXd *l_ineqb, Eigen::VectorXd *u_ineqb)
+{
+    if(jac_constr_ineqb) jac_constr_ineqb->setZero(N_ineqb,N_var);
+    if(constr_ineqb) constr_ineqb->setZero(N_ineqb);
+    if(l_ineqb) l_ineqb->setZero(N_ineqb);
+    if(u_ineqb) u_ineqb->setZero(N_ineqb);
+
+    for(size_t i=0;i<=N;i++)
+    {
+        if(jac_constr_ineqb) jac_constr_ineqb->block(NX*i, NX*i, NX, NX).setIdentity();
+        if(constr_ineqb) constr_ineqb->segment(NX*i, NX) = normalization_param_.T_x_inv*stateToVector(initial_guess[i].xk);
+        if(l_ineqb) l_ineqb->segment(NX*i, NX) = normalization_param_.T_x_inv*bounds_.getBoundsLX(initial_guess[i].xk);
+        if(u_ineqb) u_ineqb->segment(NX*i, NX) = normalization_param_.T_x_inv*bounds_.getBoundsUX(initial_guess[i].xk,track_.getLength());
+        if(i != N)
+        {
+            if(jac_constr_ineqb) jac_constr_ineqb->block(NX*(N+1) + NU*i, NU*i, NU, NU).setIdentity();
+            if(constr_ineqb) constr_ineqb->segment(NX*(N+1) + NU*i, NU) = normalization_param_.T_u_inv*inputToVector(initial_guess[i].uk);
+            if(l_ineqb) l_ineqb->segment(NX*(N+1) + NU*i, NU) = normalization_param_.T_u_inv*bounds_.getBoundsLU();
+            if(u_ineqb) u_ineqb->segment(NX*(N+1) + NU*i, NU) = normalization_param_.T_u_inv*bounds_.getBoundsUU();
+        }
+    }
+}
+
+void OsqpInterface::setPolytopicConstraints(const std::array<OptVariables,N+1> &initial_guess,
+                                            Eigen::MatrixXd *jac_constr_ineqp, Eigen::VectorXd *constr_ineqp, Eigen::VectorXd *l_ineqp, Eigen::VectorXd *u_ineqp)
+{
+    if(jac_constr_ineqp) jac_constr_ineqp->setZero(N_ineqp,N_var);
+    if(constr_ineqp) constr_ineqp->setZero(N_ineqp);
+    if(l_ineqp) l_ineqp->setZero(N_ineqp);
+    if(u_ineqp) u_ineqp->setZero(N_ineqp);
+
+    for(size_t i=0;i<=N;i++)
+    {
+        RobotData rbk;
+        rbk.update(stateToJointVector(initial_guess[i].xk), robot_);
+
+        ConstraintsInfo constr_info_k;
+        ConstraintsJac jac_constr_k;
+        if(constr_ineqp && !jac_constr_ineqp)
+        {
+            constraints_.getConstraints(initial_guess[i].xk,initial_guess[i].uk,rbk,i,&constr_info_k,NULL);
+        }
+        else if(constr_ineqp && jac_constr_ineqp)
+        {
+            constraints_.getConstraints(initial_guess[i].xk,initial_guess[i].uk,rbk,i,&constr_info_k,&jac_constr_k);
+        }
+        if(jac_constr_ineqp)
+        {
+            jac_constr_ineqp->block(NPC*i, NX*i, NPC, NX) = jac_constr_k.c_x*normalization_param_.T_x;
+            if(i!=N) jac_constr_ineqp->block(NPC*i, NX*(N+1) + NU*i, NPC, NU) = jac_constr_k.c_u*normalization_param_.T_u;
+        }
+        if(constr_ineqp) constr_ineqp->segment(NPC*i, NPC) = constr_info_k.c_vec;
+        if(l_ineqp) l_ineqp->segment(NPC*i, NPC) = constr_info_k.c_lvec;
+        if(u_ineqp) u_ineqp->segment(NPC*i, NPC) = constr_info_k.c_uvec;
+    }
+}
+
+void OsqpInterface::setConstraints(const std::array<OptVariables,N+1> &initial_guess,
+                                   Eigen::MatrixXd *jac_constr, Eigen::VectorXd *constr, Eigen::VectorXd *l, Eigen::VectorXd *u)
+{
+    Eigen::MatrixXd jac_constr_eq, jac_constr_ineqb, jac_constr_ineqp;
+    Eigen::VectorXd constr_eq, constr_ineqb, constr_ineqp;
+    Eigen::VectorXd l_eq, u_eq, l_ineqb, u_ineqb, l_ineqp, u_ineqp;
+
+    if(constr && !jac_constr)
+    {
+        setDynamics(initial_guess, NULL, &constr_eq, &l_eq, &u_eq);
+        setBounds(initial_guess, NULL, &constr_ineqb, &l_ineqb, &u_ineqb);
+        setPolytopicConstraints(initial_guess, NULL, &constr_ineqp, &l_ineqp, &u_ineqp);
+    }
+    else if(constr && jac_constr)
+    {
+        setDynamics(initial_guess, &jac_constr_eq, &constr_eq, &l_eq, &u_eq);
+        setBounds(initial_guess, &jac_constr_ineqb, &constr_ineqb, &l_ineqb, &u_ineqb);
+        setPolytopicConstraints(initial_guess, &jac_constr_ineqp, &constr_ineqp, &l_ineqp, &u_ineqp);
+    }
+    if(jac_constr)
+    {
+        jac_constr->block(0, 0, N_eq, N_var) = jac_constr_eq;
+        jac_constr->block(N_eq, 0, N_ineqb, N_var) = jac_constr_ineqb;
+        jac_constr->block(N_eq+N_ineqb, 0, N_ineqp, N_var) = jac_constr_ineqp;
+    }
+    if(constr)
+    {
+        constr->segment(0, N_eq) = constr_eq;
+        constr->segment(N_eq, N_ineqb) = constr_ineqb;
+        constr->segment(N_eq+N_ineqb, N_ineqp) = constr_ineqp;
+    }
+    if(l)
+    {
+        l->segment(0, N_eq) = l_eq;
+        l->segment(N_eq, N_ineqb) = l_ineqb;
+        l->segment(N_eq+N_ineqb, N_ineqp) = l_ineqp;
+    }
+    if(u)
+    {
+        u->segment(0, N_eq) = u_eq;
+        u->segment(N_eq, N_ineqb) = u_ineqb;
+        u->segment(N_eq+N_ineqb, N_ineqp) = u_ineqp;
+    }
+}
+
+void OsqpInterface::setQP(const std::array<OptVariables,N+1> &initial_guess,
+                          Eigen::MatrixXd *hess_obj, Eigen::VectorXd *grad_obj, double *obj, Eigen::MatrixXd *jac_constr, Eigen::VectorXd *constr, Eigen::VectorXd *l, Eigen::VectorXd *u)
+{
+    setCost(initial_guess, obj, grad_obj, hess_obj);
+    setConstraints(initial_guess, jac_constr, constr, l, u);
+}
+
+std::array<OptVariables,N+1> OsqpInterface::solveOCP(Status *status)
+{
+    // Initialize
+    lambda_.setZero(N_constr);
+    step_.setZero(N_var);
+    step_prev_.setZero(N_var);
+    step_lambda_.setZero(N_constr);
+
+    grad_L_.setZero(N_var);
+    delta_grad_L_.setZero(N_var);
+
+    Hess_.setZero(N_var, N_var);
+    grad_obj_.setZero(N_var);
+    jac_constr_.setZero(N_constr, N_var);
+    constr_.setZero(N_constr);
+    l_.setZero(N_constr);
+    u_.setZero(N_constr);
+
+    filter_data_list_.clear();
+
+    // SQP itertion
+    for(sqp_iter_=0; sqp_iter_<sqp_param_.max_iter; sqp_iter_++)
+    {
+        std::cout <<"sqp_iter_: " <<sqp_iter_<<std::endl;
+        // QP formulation
+        if(sqp_param_.use_BFGS)
+        {
+            if(sqp_iter_ == 0) setQP(initial_guess_,&Hess_, &grad_obj_, &obj_, &jac_constr_, &constr_, &l_, &u_);
+            else setQP(initial_guess_,NULL, &grad_obj_, &obj_, &jac_constr_, &constr_, &l_, &u_);
+        }
+        else
+        {
+            setQP(initial_guess_,&Hess_, &grad_obj_, &obj_, &jac_constr_, &constr_, &l_, &u_);
+        }
+
+        delta_grad_L_ = -grad_L_;
+        grad_L_ = grad_obj_ + jac_constr_.transpose() * lambda_;
+        delta_grad_L_ += grad_L_;  // delta_grad_L_ = grad_L - grad_L_prev
+
+        // get Hessian
+        if(sqp_param_.use_BFGS && sqp_iter_ != 0)  Hess_ = BFGSUpdate(Hess_, step_prev_, delta_grad_L_);
+        if (!isPosdef(Hess_)) 
+        {
+            std::cout << "Hessian not positive definite\n";
+            double tau = 1e-3;
+            Eigen::VectorXd v(N_var);
+            while (!isPosdef(Hess_)) 
+            {
+                v.setConstant(tau);
+                Hess_ += v.asDiagonal();
+                tau *= 10;
+            }
+        }
+        if (isNan(Hess_)) 
+        {
+            std::cout << "Hessian is NaN\n";
+        }
+
+        // solve QP to get step_ and step_lambda_
+        if(!solveQP(Hess_, grad_obj_, jac_constr_, l_-constr_, u_-constr_, step_, step_lambda_)) exit(0);
+        if(sqp_param_.do_SOC)
+        {
+            if(!SecondOrderCorrection(initial_guess_,Hess_,grad_obj_,jac_constr_,step_,step_lambda_)) exit(0);
+        }
+        step_lambda_ -= lambda_;
+
+        // double alpha = meritLineSearch(step_, Hess_, grad_obj_, obj_, constr_, l_, u_);
+        double alpha = filterLineSearch(initial_guess_,step_,filter_data_list_);
+        std:cout << "\talpha: "<<alpha << std::endl;
+
+        // take step
+        initial_guess_vec_ += alpha*deNormalizeStep(step_);
+        lambda_ += alpha*step_lambda_;
+        initial_guess_ = vectorToOptvar(initial_guess_vec_);
+        // printOptVar( initial_guess_);
+
+        // update step info
+        step_prev_ = alpha * step_;
+        // primal_step_norm_ = alpha * step_.template lpNorm<Eigen::Infinity>();
+        primal_step_norm_ = (alpha * step_).norm();
+        dual_step_norm_ = alpha * step_lambda_.template lpNorm<Eigen::Infinity>();
+        std::cout << "\tprimal_step_norm_: " << primal_step_norm_ << std::endl;
+        std::cout << "\tdual_step_norm_: " << dual_step_norm_ << std::endl;
+
+        // termination condition
+        // TODO: critertion about constraint
+        // if(primal_step_norm_ < sqp_param_.eps_prim && dual_step_norm_ < sqp_param_.eps_dual)
+        if(primal_step_norm_ < sqp_param_.eps_prim )
+        {
+            (*status) = SOLVED;
+            break;
+        }
+    }
+    (*status) = MAX_ITER_EXCEEDED;
+
+    return initial_guess_;
+}
+
+bool OsqpInterface::solveQP(const Eigen::MatrixXd &P, const Eigen::VectorXd &q, const Eigen::MatrixXd &A, const Eigen::VectorXd &l,const Eigen::VectorXd &u,
+                            Eigen::VectorXd &step, Eigen::VectorXd &step_lambda)
+{
+    /*
     min   1/2 x' P x + q' x
      x
 
@@ -216,91 +339,275 @@ bool OsqpInterface::Solve(bool verbose)
     P sparse (n x n) positive definite
     q dense  (n x 1)
     A sparse (nc x n)
-    l dense (nc x 1)
-    u dense (nc x 1)
+    l dense  (nc x 1)
+    u dense  (nc x 1)
     */
+   Eigen::SparseMatrix<double> P_sp(N_var, N_var);
+   Eigen::SparseMatrix<double> A_sp(N_constr, N_var);
+   Eigen::Matrix<double, N_var,1> q_ds;
+   Eigen::Matrix<double, N_constr,1> l_ds;
+   Eigen::Matrix<double, N_constr,1> u_ds;
+   P_sp = P.sparseView();
+   A_sp = A.sparseView();
+   q_ds = q;
+   l_ds = l;
+   u_ds = u;
 
-    // const int n = (N+1)*(NX+NU+2*NS); // size of qp state
-    // const int nc = (N+1)*NX + (N+1)*(NX+NU+2*NS) + (N+1)*(2*NPC); // size of qp constraints
-    const int n = (N+1)*(NX+NU); // size of qp state
-    const int nc = (N+1)*NX + (N+1)*(NX+NU) + (N+1)*(NPC); // size of qp constraints
-
-    // Constraint matrix
-    A_.resize(nc,n); A_.setZero();
-    l_.resize(nc,1); l_.setOnes(); l_ *= -OsqpEigen::INFTY;
-    u_.resize(nc,1); u_.setOnes(); u_ *= OsqpEigen::INFTY;
-    
-    // equality constraints
-    A_.block(0, 0, A_eq_.rows(), A_eq_.cols()) = A_eq_; 
-    l_.block(0, 0, l_eq_.rows(), 1) = l_eq_;
-    u_.block(0, 0, u_eq_.rows(), 1) = u_eq_;
-    // bound inequality constraints
-    A_.block(A_eq_.rows(), 0, A_ineqb_.rows(), A_ineqb_.cols()) = A_ineqb_; 
-    l_.block(l_eq_.rows(), 0, l_ineqb_.rows(), 1) = l_ineqb_;
-    u_.block(u_eq_.rows(), 0, u_ineqb_.rows(), 1) = u_ineqb_;
-    // polytopic inequality constraints
-    A_.block(A_eq_.rows()+A_ineqb_.rows(), 0, A_ineqp_.rows(), A_ineqp_.cols()) = A_ineqp_; 
-    l_.block(l_eq_.rows()+l_ineqb_.rows(), 0, l_ineqp_.rows(), 1) = l_ineqp_;
-    u_.block(u_eq_.rows()+u_ineqb_.rows(), 0, u_ineqp_.rows(), 1) = u_ineqp_;
-
-    SparseMatrix<double> P(n, n);
-    Matrix<double, n, 1> q;
-    SparseMatrix<double> A(nc, n);
-    Matrix<double, nc, 1> l, u; 
-    Matrix<double, n, 1> initial_x;
-
-    P = P_.sparseView();
-    q = q_;
-    A = A_.sparseView();
-    l = l_; 
-    u = u_;
-    initial_x = initial_x_;
-
+    OsqpEigen::Solver solver_;
     // settings
-    if (!verbose) solver_.settings()->setVerbosity(true);
+    solver_.settings()->setWarmStart(false);
+    solver_.settings()->getSettings()->eps_abs = 1e-4;
+    solver_.settings()->getSettings()->eps_rel = 1e-5;
+    solver_.settings()->getSettings()->verbose =  false;
 
     // set the initial data of the QP solver
-    solver_.data()->setNumberOfVariables(n);
-    solver_.data()->setNumberOfConstraints(nc);
-    if (!solver_.data()->setHessianMatrix(P))           return false;
-    if (!solver_.data()->setGradient(q))                return false;
-    if (!solver_.data()->setLinearConstraintsMatrix(A)) return false;
-    if (!solver_.data()->setLowerBound(l))              return false;
-    if (!solver_.data()->setUpperBound(u))              return false;
+    solver_.data()->setNumberOfVariables(N_var);
+    solver_.data()->setNumberOfConstraints(N_constr);
+    if (!solver_.data()->setHessianMatrix(P_sp))           return false;
+    if (!solver_.data()->setGradient(q_ds))                return false;
+    if (!solver_.data()->setLinearConstraintsMatrix(A_sp)) return false;
+    if (!solver_.data()->setLowerBound(l_ds))              return false;
+    if (!solver_.data()->setUpperBound(u_ds))              return false;
 
     // instantiate the solver
     if (!solver_.initSolver()) return false;
-    if (!solver_.setPrimalVariable(initial_x)) return false;
 
     // solve the QP problem
     if (solver_.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) return false;
     if (solver_.getStatus() != OsqpEigen::Status::Solved) return false;
 
     // get the controller input
-    qp_sol_ = solver_.getSolution();
-    // std::cout<<QPSolution<<std::endl;
+    step = solver_.getSolution();
+    step_lambda = solver_.getDualSolution();
+
+    solver_.clearSolverVariables();
+    solver_.clearSolver();
 
     return true; 
 }
 
-std::array<OptVariables, N + 1> OsqpInterface::getSolution()
+bool OsqpInterface::SecondOrderCorrection(const std::array<OptVariables,N+1> &initial_guess, const Eigen::MatrixXd &hess_obj, const Eigen::VectorXd &grad_obj, const Eigen::MatrixXd & jac_constr,
+                                          Eigen::VectorXd &step, Eigen::VectorXd &step_lambda)
 {
-    std::array<OptVariables,N+1> optimal_solution;
-    for(size_t i=0;i<N+1;i++)
-    {
-        optimal_solution[i].xk = vectorToState(qp_sol_.block(NX*i,0,NX,1));
-        optimal_solution[i].uk = vectorToInput(qp_sol_.block(NX*(N+1)+NU*i,0,NU,1));
-        // optimal_solution[i].slk = vectorToSlack(qp_sol_.block((NX+NU)*(N+1)+NS*i,0,NS,1));
-        // optimal_solution[i].suk = vectorToSlack(qp_sol_.block((NX+NU+NS)*(N+1)+NS*i,0,NS,1));
-        optimal_solution[i].slk.setZero();
-        optimal_solution[i].suk.setZero();
-    }
-    optimal_solution[N].uk.setZero();
-    return optimal_solution;
+    const std::array<OptVariables,N+1> updates_initial_guess = vectorToOptvar(OptvarToVector(initial_guess) + step);
+
+    Eigen::VectorXd constr_step;
+    Eigen::VectorXd l_step, u_step;
+    constr_step.setZero(N_constr);
+    l_step.setZero(N_constr);
+    u_step.setZero(N_constr);
+    setConstraints(updates_initial_guess, NULL, &constr_step, &l_step, &u_step);
+
+    // Constraints
+    // from   l <= A.x + b <= u
+    // to   l-b <= A.x     <= u-b
+    Eigen::MatrixXd P = hess_obj;
+    Eigen::VectorXd q = grad_obj;
+    Eigen::MatrixXd A = jac_constr;
+    Eigen::VectorXd d = constr_step - A*step;
+    Eigen::VectorXd l = l_step - d;
+    Eigen::VectorXd u = u_step - d;
+
+    return solveQP(P, q, A, l, u, step, step_lambda);
 }
 
-void OsqpInterface::print_data()
+Eigen::MatrixXd OsqpInterface::BFGSUpdate(const Eigen::MatrixXd &Hess, const Eigen::VectorXd &step_prev, const Eigen::VectorXd &delta_grad_L)
 {
+    // Damped BFGS update
+    // Implements "Procedure 18.2 Damped BFGS updating for SQP" form Numerical Optimization by Nocedal.
+    double sy, sr, sBs;
+    Eigen::VectorXd Bs, r;
 
+    Bs = Hess * step_prev;
+    sBs = step_prev.dot(Bs);
+    sy = step_prev.dot(delta_grad_L);
+
+    if (sy < 0.2 * sBs) 
+    {
+        // damped update to enforce positive definite B
+        double theta;
+        theta = 0.8 * sBs / (sBs - sy);
+        r = theta * delta_grad_L + (1 - theta) * Bs;
+        sr = theta * sy + (1 - theta) * sBs;
+    } 
+    else 
+    {
+        // unmodified BFGS
+        r = delta_grad_L;
+        sr = sy;
+    }
+
+    if (sr < std::numeric_limits<double>::epsilon()) 
+    {
+        return Hess;
+    }
+
+    return Hess - Bs * Bs.transpose() / sBs + r * r.transpose() / sr;
+}
+
+double OsqpInterface::meritLineSearch(const Eigen::VectorXd &step, const Eigen::MatrixXd &Hess, const Eigen::VectorXd &grad_obj, const double &obj, const Eigen::VectorXd &constr, const Eigen::VectorXd &l, const Eigen::VectorXd &u)
+{
+    double mu, phi_l1, Dp_phi_l1;
+    const double tau = sqp_param_.line_search_tau; // line search step decrease, 0 < tau < settings.tau
+
+    double constr_l1 = constraint_norm(constr, l, u);
+
+    // get mu from merit function model using hessian of Lagrangian instead
+    mu = (grad_obj.dot(step) + 0.5 * step.dot(Hess * step)) / ((1 - sqp_param_.line_search_rho) * constr_l1);
+
+    phi_l1 = obj + mu * constr_l1;
+    Dp_phi_l1 = grad_obj.dot(step) - mu * constr_l1;
+
+    double updated_obj;
+    Eigen::VectorXd updated_constr;
+    Eigen::VectorXd updated_l, updated_u;
+
+    double alpha = 1.0;
+    for(size_t i=0; i<sqp_param_.line_search_max_iter; i++)
+    {
+        updated_constr.setZero(N_constr);
+        updated_l.setZero(N_constr);
+        updated_u.setZero(N_constr);
+
+        Eigen::VectorXd updated_initial_guess_vec = initial_guess_vec_ + alpha * deNormalizeStep(step);
+        std::array<OptVariables,N+1> updated_initial_guess = vectorToOptvar(updated_initial_guess_vec);
+        setQP(updated_initial_guess, NULL, NULL, &updated_obj, NULL, &updated_constr, &updated_l, &updated_u);
+
+        double updated_phi_l1 = updated_obj + mu * constraint_norm(updated_constr, updated_l, updated_u);
+        if (updated_phi_l1 <= phi_l1 + alpha * sqp_param_.line_search_eta * Dp_phi_l1) 
+        {
+            // accept step
+            break;
+        } 
+        else 
+        {
+            alpha = tau * alpha;
+        }
+    }
+    return alpha;
+}
+
+double OsqpInterface::filterLineSearch(const std::array<OptVariables,N+1> &initial_guess, const Eigen::VectorXd &step, std::vector<FilterData> &filter_data_list)
+{
+    FilterData updated_filter_data;
+    Eigen::VectorXd updated_constr, updated_l, updated_u;
+    updated_constr.setZero(N_constr);
+    updated_l.setZero(N_constr);
+    updated_u.setZero(N_constr);
+
+    bool is_alpha_accepted = true;
+
+    double alpha = 1.0;
+    for(size_t i=0; i<sqp_param_.line_search_max_iter; i++)
+    {
+        // get updated cost and constraint wrt x+delta_x
+        const std::array<OptVariables,N+1> updated_initial_guess = vectorToOptvar(OptvarToVector(initial_guess) + alpha*deNormalizeStep(step));
+        setQP(updated_initial_guess, NULL, NULL, &updated_filter_data.obj, NULL, &updated_constr, &updated_l, &updated_u);
+        updated_filter_data.gap_vio = constraint_norm(updated_constr, updated_l, updated_u);
+        // filtering updated data
+        for(size_t j=0; j<filter_data_list.size(); j++)
+        {
+            if(updated_filter_data.obj >= filter_data_list[j].obj && updated_filter_data.gap_vio >= filter_data_list[j].gap_vio)
+            {
+                is_alpha_accepted = false;
+                break;
+            }
+        }
+        if(is_alpha_accepted)
+        {
+            // update filter data list
+            std::vector<FilterData> updated_filter_data_list;
+            updated_filter_data_list.clear();
+            for(size_t j=0; j<filter_data_list.size(); j++)
+            {
+                if(updated_filter_data.obj > filter_data_list[j].obj || updated_filter_data.gap_vio > filter_data_list[j].gap_vio)
+                {
+                    updated_filter_data_list.push_back(filter_data_list[j]);
+                }
+            }
+            updated_filter_data_list.push_back(updated_filter_data);
+            filter_data_list = updated_filter_data_list;
+            break;
+        }
+        else
+        {
+            // decrease alpha
+            alpha *= sqp_param_.line_search_tau;
+        }
+    }
+    return alpha;
+}
+
+bool OsqpInterface::isPosdef(const Eigen::MatrixXd& H)
+{
+    Eigen::LLT<MatrixXd> llt(H);
+    if (llt.info() == Eigen::NumericalIssue) {
+        return false;
+    }
+    return true;
+}
+
+bool OsqpInterface::isNan(const Eigen::MatrixXd& x)
+{
+    return x.array().isNaN().any();
+}
+
+double OsqpInterface::constraint_norm(const Eigen::VectorXd &constr, const Eigen::VectorXd &l, const Eigen::VectorXd &u)
+{
+    double c_l1 = 0;
+
+    // l <= c(x) <= u
+    c_l1 += (l - constr).cwiseMax(0.0).sum();
+    c_l1 += (constr - u).cwiseMax(0.0).sum();
+
+    return c_l1;
+}
+
+std::array<OptVariables,N+1> OsqpInterface::vectorToOptvar(const Eigen::VectorXd& opt_var_vec)
+{
+    std::array<OptVariables, N + 1> opt_var;
+    for(size_t i=0;i<=N;i++)
+    {
+        opt_var[i].xk = vectorToState(opt_var_vec.segment(NX*i, NX));
+        if(i!=N) opt_var[i].uk = vectorToInput(opt_var_vec.segment(NX*(N+1)+NU*i, NU));
+    }
+    return opt_var;
+}
+
+Eigen::VectorXd OsqpInterface::OptvarToVector(const std::array<OptVariables,N+1>& opt_var)
+{
+    Eigen::VectorXd opt_var_vec;
+    opt_var_vec.setZero(N_var);
+    for(size_t i=0;i<=N;i++)
+    {
+        opt_var_vec.segment(NX*i,NX) = stateToVector(opt_var[i].xk);
+        if(i!=N) opt_var_vec.segment(NX*(N+1)+NU*i, NU) = inputToVector(opt_var[i].uk);
+    }
+    return opt_var_vec;
+}
+
+Eigen::VectorXd OsqpInterface::deNormalizeStep(const Eigen::VectorXd& step)
+{
+    Eigen::VectorXd denormalized_step;
+    denormalized_step.setZero(N_var);
+    for(size_t i=0;i<=N;i++) 
+    {
+        denormalized_step.segment(NX*i, NX) = normalization_param_.T_x*step.segment(NX*i, NX);
+        if(i!=N) denormalized_step.segment(NX*(N+1) + NU*i, NU) = normalization_param_.T_u*step.segment(NX*(N+1) + NU*i, NU);
+    }
+    return denormalized_step;
+}
+
+void OsqpInterface::printOptVar(std::array<OptVariables,N+1> opt_var)
+{
+    for(size_t i=0;i<=N;i++)
+    {
+        std::cout << "State[" << i << "]: " << stateToVector(opt_var[i].xk).transpose() << std::endl;; 
+    }
+    std::cout <<" \n";
+    for(size_t i=0;i<N;i++)
+    {
+        std::cout << "Input[" << i << "]: " << inputToVector(opt_var[i].uk).transpose() << std::endl;; 
+    }
 }
 }

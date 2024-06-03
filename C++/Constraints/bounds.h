@@ -25,14 +25,19 @@ namespace mpcc{
 class Bounds {
 public:
     Bounds();
-    Bounds(BoundsParam bounds_param);
+    Bounds(BoundsParam bounds_param, Param param);
 
     /// @brief get lower bound for state
+    /// @param x (State) current state
     /// @return (Eigen::VectorXd) lower bound for state
+    Bounds_x getBoundsLX(const State &x) const;
     Bounds_x getBoundsLX() const;
 
     /// @brief get upper bound for state
+    /// @param x (State) current state
+    /// @param track_length (double) track length
     /// @return (Eigen::VectorXd) upper bound for state
+    Bounds_x getBoundsUX(const State &x,const double &track_length) const;
     Bounds_x getBoundsUX() const;
 
     /// @brief get lower bound for control input
@@ -43,14 +48,6 @@ public:
     /// @return (Eigen::VectorXd) upper bound for control input
     Bounds_u getBoundsUU() const;
 
-    /// @brief get lower bound for slack variables
-    /// @return (Eigen::VectorXd) lower bound for slack variables
-    Bounds_s getBoundsLS() const;
-
-    /// @brief get upper bound for slack variables
-    /// @return (Eigen::VectorXd) upper bound for slack variables
-    Bounds_s getBoundsUS() const;
-
 private:
 
     Bounds_x u_bounds_x_;
@@ -59,8 +56,7 @@ private:
     Bounds_u u_bounds_u_;
     Bounds_u l_bounds_u_;
 
-    Bounds_s u_bounds_s_;
-    Bounds_s l_bounds_s_;
+    Param param_;
 };
 }
 #endif //MPCC_BOUNDS_H

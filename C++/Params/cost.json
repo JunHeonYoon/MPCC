@@ -2,19 +2,12 @@
 {
   "qC" : 100.0,
   "qCNmult": 10,
-  "qL" : 5000.0,
+  "qL" : 500.0,
   "qVs" : 100,
 
-  "qOri": 0.001,
-
+  "qOri": 50,
 
   "rdq" : 0.5,
   "rdVs" : 10,
-  "rEE" : 5,
-
-  "sc_quad_selcol": 1.0,
-  "sc_quad_sing": 1.0,
-
-  "sc_lin_selcol": 1.0,
-  "sc_lin_sing": 1.0
+  "rEE" : 5.0
 }

@@ -26,7 +26,6 @@
 
 namespace mpcc{
 
-// #define MAX(a,b) (a < b) ? b : a
 #define PANDA_DOF 7
 
 #define NX 9  // [joint angle, s(path param), vs]
@@ -34,11 +33,10 @@ namespace mpcc{
 
 // #define NB 13 // max number of bounds
 #define NPC 2 // number of polytopic constraints: Self collision, Singularity
-#define NS 2  // number of soft constraints: Self collision, Singularity
 
-static constexpr int N = 10;
+static constexpr int N = 30;
 static constexpr double INF = 1E30;
-static constexpr int N_SPLINE = 5000;
+static constexpr int N_SPLINE = 100;
 
 /// @brief Index of State, Control input and soft constraints
 struct StateInputIndex{
@@ -63,7 +61,7 @@ struct StateInputIndex{
     int dq7 = 6;
     int dVs = 7;
 
-    // Index of soft constraints
+    // Index of constraints
     int con_selcol = 0; // self collision 
     int con_sing = 1;   // singularity
 };

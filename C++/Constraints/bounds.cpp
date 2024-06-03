@@ -21,7 +21,8 @@ Bounds::Bounds()
     std::cout << "default constructor, not everything is initialized properly" << std::endl;
 }
 
-Bounds::Bounds(BoundsParam bounds_param) 
+Bounds::Bounds(BoundsParam bounds_param,Param param):
+param_(param)
 {
     l_bounds_x_(0) = bounds_param.lower_state_bounds.q1_l;
     l_bounds_x_(1) = bounds_param.lower_state_bounds.q2_l;
@@ -61,16 +62,28 @@ Bounds::Bounds(BoundsParam bounds_param)
     u_bounds_u_(6) = bounds_param.upper_input_bounds.dq7_u;
     u_bounds_u_(7) = bounds_param.upper_input_bounds.dVs_u;
 
-    l_bounds_s_ = Bounds_s::Zero();
-    u_bounds_s_ = Bounds_s::Zero();
-    // u_bounds_s_ = Bounds_s::Ones() * INF;
 
     std::cout << "bounds initialized" << std::endl;
 }
 
+Bounds_x Bounds::getBoundsLX(const State &x) const
+{
+    Bounds_x l_bounds_x;
+    l_bounds_x = l_bounds_x_;
+    l_bounds_x(si_index.s) = std::max((x.s - param_.s_trust_region),0.);
+    return  l_bounds_x;
+}
 Bounds_x Bounds::getBoundsLX() const
 {
     return  l_bounds_x_;
+}
+
+Bounds_x Bounds::getBoundsUX(const State &x,const double &track_length) const
+{
+    Bounds_x u_bounds_x;
+    u_bounds_x = u_bounds_x_;
+    u_bounds_x(si_index.s) = std::min((x.s + param_.s_trust_region),track_length);
+    return  u_bounds_x;
 }
 
 Bounds_x Bounds::getBoundsUX() const
@@ -88,12 +101,4 @@ Bounds_u Bounds::getBoundsUU() const
     return  u_bounds_u_;
 }
 
-Bounds_s Bounds::getBoundsLS() const
-{
-    return  l_bounds_s_;
-}
-
-Bounds_s Bounds::getBoundsUS() const{
-    return  u_bounds_s_;
-}
 }

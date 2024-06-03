@@ -10,7 +10,7 @@ using namespace RigidBodyDynamics;
 using namespace Eigen;
 using namespace std;
 
-#define PANDA_NUM_LINKS 9 // with hand
+#define PANDA_NUM_LINKS 10 // with hand
 
 namespace mpcc
 {   
@@ -38,6 +38,11 @@ namespace mpcc
             {
 				Jacobian(frame_id, q);
 				return j_v_;
+			}
+            const MatrixXd & getJacobianw(const VectorXd &q, const int & frame_id=PANDA_NUM_LINKS) 
+            {
+				Jacobian(frame_id, q);
+				return j_w_;
 			}
             const Vector3d & getPosition(const int & frame_id) 
             {
@@ -67,6 +72,7 @@ namespace mpcc
             const Matrix3d & getEEOrientation(const VectorXd &q, const int & frame_id=PANDA_NUM_LINKS) 
             {
 				Orientation(frame_id, q);
+
 				return rotation_;
 			}
             const Affine3d & getTransformation(const int & frame_id) 

@@ -21,128 +21,155 @@ Constraints::Constraints()
     std::cout << "default constructor, not everything is initialized properly" << std::endl;
 }
 
-Constraints::Constraints(double Ts,const PathToJson &path,std::shared_ptr<RobotModel> robot,std::shared_ptr<SelCollNNmodel> selcolNN) 
+Constraints::Constraints(double Ts,const PathToJson &path,std::shared_ptr<SelCollNNmodel> selcolNN) 
 :model_(Ts,path),
 param_(Param(path.param_path)),
-robot_(robot),
 selcolNN_(selcolNN)
 {
 }
 
-OneDConstraint Constraints::getSelcollConstraint(const State &x,const Input &u) const
+double getRBF(double delta, double h)
 {
+    // Grandia, Ruben, et al. 
+    // "Feedback mpc for torque-controlled legged robots." 
+    // 2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). IEEE, 2019.
+    double result;
+    if (h >= delta) result = -log(h+1);
+    else            result = -log(delta+1) - 1/(delta+1) * (h-delta) + 1/(2*pow(delta+1,2)) * pow(h-delta,2);
+    return result;
+}
+
+double getDRBF(double delta, double h)
+{
+    // Grandia, Ruben, et al. 
+    // "Feedback mpc for torque-controlled legged robots." 
+    // 2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). IEEE, 2019.
+    double result;
+    if (h >= delta) result = -1/(h+1);
+    else            result = -1/(delta+1) + 1/(pow(delta+1,2)) * (h-delta);
+    return result;
+}
+
+void Constraints::getSelcollConstraint(const State &x,const Input &u,int k,
+                                       OneDConstraintInfo *constraint, OneDConstraintsJac* Jac)
+{
+    if(k==N)
+    {
+        if(constraint) constraint->setZero();
+        if(Jac) Jac->setZero();
+        return;
+    }
     // compute self-collision constraints
-    // -∇_q Γ(q) * q_dot <= -RBF(Γ(q) - r), where r is buffer
+    // -∇_q Γ(q)^T * q_dot <= -RBF(Γ(q) - r), where r is buffer
     const JointVector q = stateToJointVector(x);
     const JointVector dq = inputToJointVector(u);
 
     // compute minimum distance between each links and its derivative
     auto y_pred = selcolNN_->calculateMlpOutput(q, false); // first: min_dist, second: derivative wrt q
-    double min_dist = y_pred.first[0]; // unit: [cm]
+    double min_dist = y_pred.first.value(); // unit: [cm]
     Eigen::VectorXd d_min_dist = y_pred.second.transpose();
-    Eigen::Matrix<double, PANDA_DOF, PANDA_DOF> dd_min_dist = d_min_dist * d_min_dist.transpose(); // hessian matrix (approximation)
 
     // compute RBF value of minimum distance and its derivative
-    double r = 3; // buffer [cm]
-    double delta = 5; // switching point of RBF
-    double RBF = 5*getRBF(delta, min_dist - r);
-    double d_RBF = 5*getDRBF(delta, min_dist - r);
+    double r = 1.0; // buffer [cm]
+    double delta = -0.5; // switching point of RBF
+    double RBF = getRBF(delta, min_dist - r);
 
-    C_i_MPC C_selcol_matrix = C_i_MPC::Zero();;
-    D_i_MPC D_selcol_matrix = D_i_MPC::Zero();;
-    double selcol_constrint_lower = 0, selcol_constrint_upper = 0;
+    if(constraint)
+    {
+        constraint->setZero();
+        constraint->c_l = -INF;
+        constraint->c_u = 0.0;
+        constraint->c = -d_min_dist.dot(dq) + RBF;
+    }
+    if(Jac)
+    {
+        Eigen::Matrix<double, PANDA_DOF, PANDA_DOF> dd_min_dist = d_min_dist * d_min_dist.transpose(); // hessian matrix (approximation)
+        double d_RBF = getDRBF(delta, min_dist - r);
 
-    C_selcol_matrix.block(si_index.q1,si_index.q1,1,PANDA_DOF) = (-dd_min_dist*dq + d_RBF*d_min_dist).transpose();
-    D_selcol_matrix.block(si_index.dq1,si_index.dq1,1,PANDA_DOF) = -d_min_dist.transpose();
-    selcol_constrint_lower = -INF;
-    selcol_constrint_upper = (d_min_dist.transpose()*dq).value() - RBF + (C_selcol_matrix*stateToVector(x)).value() + (D_selcol_matrix*inputToVector(u)).value();
-
-    return {C_selcol_matrix,D_selcol_matrix,selcol_constrint_lower,selcol_constrint_upper};
+        Jac->setZero();
+        Jac->c_x_i.block(0,si_index.q1,1,PANDA_DOF) = (-dd_min_dist*dq + d_RBF*d_min_dist).transpose();
+        Jac->c_u_i.block(0,si_index.dq1,1,PANDA_DOF) = -d_min_dist.transpose();
+    }
+    return;
 }
 
-OneDConstraint Constraints::getSingularConstraint(const State &x,const Input &u) const
+void Constraints::getSingularConstraint(const State &x,const Input &u,const RobotData &rb,int k,
+                                        OneDConstraintInfo *constraint, OneDConstraintsJac* Jac)
 {
+    if(k==N)
+    {
+        if(constraint) constraint->setZero();
+        if(Jac) Jac->setZero();
+        return;
+    }
     // compute singularity constraints
-    // -∇_q μ(q) * q_dot <= -RBF(μ(q) - ɛ), where ɛ is buffer
-    const JointVector q = stateToJointVector(x);
+    // -∇_q μ(q)^T * q_dot <= -RBF(μ(q) - ɛ), where ɛ is buffer
     const JointVector dq = inputToJointVector(u);
 
-    // compute manipulability and its derivative
-    double manipulability = 100*robot_->getManipulability(q);
-    Eigen::VectorXd d_manipulability = 100*robot_->getDManipulability(q);
-    Eigen::Matrix<double, PANDA_DOF, PANDA_DOF> dd_manipulability = d_manipulability * d_manipulability.transpose(); // hessian matrix (approximation)
-    // cout<<"mani               : "<<manipulability<<std::endl;
-    // cout<<"d_mani*q_dot       : "<<d_manipulability.dot(dq)<<std::endl;
-    // cout<<"mani - d_mani*q_dot: "<<manipulability-d_manipulability.dot(dq) <<std::endl;
+    //  compute manipulability and its derivative
+    double manipulability = rb.manipul; 
+    Eigen::VectorXd d_manipulability = rb.d_manipul;
 
     // compute RBF value of manipulability and its derivative
-    double eps = 100*0.03;    // buffer 
-    double delta = 100*0.05;  // switching point of RBF
+    double eps = 0.03;    // buffer
+    double delta = -0.5;  // switching point of RBF
     double RBF = getRBF(delta, manipulability - eps);
-    double d_RBF = getDRBF(delta, manipulability - eps);
-    // std::cout<< -d_manipulability.dot(dq) << " <= " << -RBF << std::endl;
 
+    if(constraint)
+    {
+        constraint->setZero();
+        constraint->c_l = -INF;
+        constraint->c_u = 0.0;
+        constraint->c = -d_manipulability.dot(dq) + RBF;
+    }
+    if(Jac)
+    {
+        Eigen::Matrix<double, PANDA_DOF, PANDA_DOF> dd_manipulability = d_manipulability * d_manipulability.transpose(); // hessian matrix (approximation)
+        double d_RBF = getDRBF(delta, manipulability - eps);
 
-    C_i_MPC C_sing_matrix = C_i_MPC::Zero();
-    D_i_MPC D_sing_matrix = D_i_MPC::Zero();
-    D_sing_matrix.setZero();
-    double sing_constrint_lower = 0, sing_constrint_upper = 0;
-
-    C_sing_matrix.block(si_index.q1,si_index.q1,1,PANDA_DOF) = (-dd_manipulability*dq + d_RBF*d_manipulability).transpose();
-    D_sing_matrix.block(si_index.dq1,si_index.dq1,1,PANDA_DOF) = -d_manipulability.transpose();
-    sing_constrint_lower = -INF;
-    sing_constrint_upper = (d_manipulability.transpose()*dq).value() - RBF + (C_sing_matrix*stateToVector(x)).value() + (D_sing_matrix*inputToVector(u)).value();
-
-
-    return {C_sing_matrix,D_sing_matrix,sing_constrint_lower,sing_constrint_upper};
+        Jac->setZero();
+        Jac->c_x_i.block(0,si_index.q1,1,PANDA_DOF) = (-dd_manipulability*dq + d_RBF*d_manipulability).transpose();
+        Jac->c_u_i.block(0,si_index.dq1,1,PANDA_DOF) = -d_manipulability.transpose();
+    }
+    return;
 }
 
-
-double Constraints::getRBF(double delta, double h) const
-{
-    // Grandia, Ruben, et al. 
-    // "Feedback mpc for torque-controlled legged robots." 
-    // 2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). IEEE, 2019.
-    double result;
-    if (h >= delta) result = -log(h);
-    else            result = ( pow( (h-2*delta) / delta ,2) - 1 ) / 2 - log(delta);
-    return result;
-}
-
-double Constraints::getDRBF(double delta, double h) const
-{
-    // Grandia, Ruben, et al. 
-    // "Feedback mpc for torque-controlled legged robots." 
-    // 2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS). IEEE, 2019.
-    double result;
-    if (h >= delta) result = -1/h;
-    else            result = (h-2*delta) / delta;
-    return result;
-}
-
-ConstrainsMatrix Constraints::getConstraints(const ArcLengthSpline &track,const State &x,const Input &u) const
+void Constraints::getConstraints(const State &x,const Input &u,const RobotData &rb,int k,
+                                 ConstraintsInfo *constraint, ConstraintsJac* Jac)
 {
     // compute all the polytopic state constraints
     // compute the three constraints
+    OneDConstraintInfo constraint_selcol, constraint_sing;
+    OneDConstraintsJac jac_selcol, jac_sing;
 
-    ConstrainsMatrix constrains_matrix;
-    const OneDConstraint selcol_constraints = getSelcollConstraint(x,u);
-    const OneDConstraint sing_constraints = getSingularConstraint(x,u);
+    if(Jac)
+    {
+        getSelcollConstraint(x, u, k, &constraint_selcol, &jac_selcol);
+        getSingularConstraint(x, u, rb, k, &constraint_sing, &jac_sing);
+    }
+    else
+    {
+        getSelcollConstraint(x, u, k, &constraint_selcol, NULL);
+        getSingularConstraint(x, u, rb, k, &constraint_sing, NULL);
+    }
 
-    C_MPC C_constrains_matrix;
-    D_MPC D_constrains_matrix;
-    d_MPC dl_constrains_matrix;
-    d_MPC du_constrains_matrix;
-
-    C_constrains_matrix.row(si_index.con_selcol) = selcol_constraints.C_i;
-    D_constrains_matrix.row(si_index.con_selcol) = selcol_constraints.D_i;
-    dl_constrains_matrix(si_index.con_selcol) = selcol_constraints.dl_i;
-    du_constrains_matrix(si_index.con_selcol) = selcol_constraints.du_i;
-    C_constrains_matrix.row(si_index.con_sing) = sing_constraints.C_i;
-    D_constrains_matrix.row(si_index.con_sing) = sing_constraints.D_i;
-    dl_constrains_matrix(si_index.con_sing) = sing_constraints.dl_i;
-    du_constrains_matrix(si_index.con_sing) = sing_constraints.du_i;
-
-    return {C_constrains_matrix,D_constrains_matrix,dl_constrains_matrix,du_constrains_matrix};
+    if(constraint)
+    {
+        constraint->c_vec(si_index.con_selcol) = constraint_selcol.c;
+        constraint->c_vec(si_index.con_sing) = constraint_sing.c;
+        constraint->c_lvec(si_index.con_selcol) = constraint_selcol.c_l;
+        constraint->c_lvec(si_index.con_sing) = constraint_sing.c_l;
+        constraint->c_uvec(si_index.con_selcol) = constraint_selcol.c_u;
+        constraint->c_uvec(si_index.con_sing) = constraint_sing.c_u;
+    }
+    
+    if(Jac)
+    {
+        Jac->c_x.row(si_index.con_selcol) = jac_selcol.c_x_i;
+        Jac->c_x.row(si_index.con_sing) = jac_sing.c_x_i;
+        Jac->c_u.row(si_index.con_selcol) = jac_selcol.c_u_i;
+        Jac->c_u.row(si_index.con_sing) = jac_sing.c_u_i;
+    }
+    return;
 }
 }

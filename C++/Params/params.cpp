@@ -30,47 +30,14 @@ Param::Param(std::string file){
     std::ifstream iModel(file);
     json jsonModel;
     iModel >> jsonModel;
-    
-//     // Model Parameters
-//     Cm1 = jsonModel["Cm1"];
-//     Cm2 = jsonModel["Cm2"];
-//     Cr0 = jsonModel["Cr0"];
-//     Cr2 = jsonModel["Cr2"];
-
-//     Br 	= jsonModel["Br"];
-//     Cr 	= jsonModel["Cr"];
-//     Dr 	= jsonModel["Dr"];
-
-//     Bf 	= jsonModel["Bf"];
-//     Cf 	= jsonModel["Cf"];
-//     Df 	= jsonModel["Df"];
-
-//     m 	= jsonModel["m"];
-//     Iz 	= jsonModel["Iz"];
-//     lf 	= jsonModel["lf"];
-//     lr 	= jsonModel["lr"];
-
-//     car_l = jsonModel["car_l"];
-//     car_w = jsonModel["car_w"];
-    
-//     g = jsonModel["g"];
-
-//     //Constraint Parameters
-//     r_in = jsonModel["R_in"];
-//     r_out = jsonModel["R_out"];
 
     max_dist_proj = jsonModel["max_dist_proj"];
-
-//     e_long = jsonModel["E_long"];
-//     e_eps = jsonModel["E_eps"];
-
-//     max_alpha = jsonModel["maxAlpha"];
-
-//     // initial warm start and trust region (model dependent)
     desired_ee_velocity = jsonModel["desired_ee_velocity"];
+    deacc_ratio = jsonModel["deaccelerate_ratio"];
+
+    // initial warm start and trust region (model dependent)
     s_trust_region = jsonModel["s_trust_region"];
 
-//     vx_zero = jsonModel["vx_zero"];
 }
 
 CostParam::CostParam(){
@@ -97,13 +64,6 @@ CostParam::CostParam(std::string file){
     r_dq = jsonCost["rdq"];
     r_dVs = jsonCost["rdVs"];
     r_ee = jsonCost["rEE"];
-
-
-    sc_quad_selcol = jsonCost["sc_quad_selcol"];
-    sc_quad_sing= jsonCost["sc_quad_sing"];
-
-    sc_lin_selcol = jsonCost["sc_lin_selcol"];
-    sc_lin_sing = jsonCost["sc_lin_sing"];
 }
 
 BoundsParam::BoundsParam() {
@@ -208,9 +168,26 @@ NormalizationParam::NormalizationParam(std::string file)
     {
         T_u_inv(i,i) = 1.0/T_u(i,i);
     }
-
-    T_s.setIdentity();
-    T_s_inv.setIdentity();
 }
 
+SQPParam::SQPParam(){
+    std::cout << "Default initialization of SQP" << std::endl;
+}
+
+SQPParam::SQPParam(std::string file){
+    std::ifstream iSQP(file);
+    json jsonSQP;
+    iSQP >> jsonSQP;
+
+    eps_prim = jsonSQP["eps_prim"];
+    eps_dual = jsonSQP["eps_dual"];
+    max_iter = jsonSQP["max_iter"];
+    line_search_max_iter = jsonSQP["line_search_max_iter"];
+    do_SOC = jsonSQP["do_SOC"];
+    use_BFGS = jsonSQP["use_BFGS"];
+
+    line_search_tau = jsonSQP["line_search_tau"];
+    line_search_eta = jsonSQP["line_search_eta"];
+    line_search_rho = jsonSQP["line_search_rho"];
+}
 }

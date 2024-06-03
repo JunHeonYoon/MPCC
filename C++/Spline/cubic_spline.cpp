@@ -151,10 +151,12 @@ int CubicSpline::getIndex(const double x) const
 
     }
 }
+
 double CubicSpline::unwrapInput(double x) const
 {
     double x_max = spline_data_.x_data(spline_data_.n_points-1);
-    return x - x_max*std::floor(x/x_max);
+    // return x - x_max*std::floor(x/x_max);
+    return std::max(0., std::min(x,x_max)); 
 }
 
 void CubicSpline::genSpline(const Eigen::VectorXd &x_in,const Eigen::VectorXd &y_in,const bool is_regular)
@@ -187,7 +189,10 @@ double CubicSpline::getPoint(double x) const
     double x_i;
     double dx,dx2,dx3;
     // wrape input to data -> x data needs start at 0 and contain end point!!!
+    
+    // std::cout<<"before x: "<<x <<std::endl;
     x = unwrapInput(x);
+    // std::cout<<"after x: "<<x <<std::endl;
     // compute index
     index = getIndex(x);
     // access previous points
@@ -197,6 +202,7 @@ double CubicSpline::getPoint(double x) const
     dx2 = dx*dx;
     dx3 = dx*dx2;
     // return spline value y = a + b dx + c dx^2 + d dx^3
+    if(index == spline_data_.n_points-1) return spline_data_.y_data(spline_data_.n_points-1);
     return spline_params_.a(index) + spline_params_.b(index)*dx + spline_params_.c(index)*dx2 + spline_params_.d(index)*dx3;
 }
 
@@ -210,11 +216,13 @@ double CubicSpline::getDerivative(double x) const
 
     x = unwrapInput(x);
     index = getIndex(x);
+
     x_i = spline_data_.x_data(index);
 
     dx = x-x_i;
     dx2 = dx*dx;
     // y' = b + 2 c dx + 3 d dx^2
+    if(index == spline_data_.n_points-1) return 0.;
     return spline_params_.b(index) + 2.0*spline_params_.c(index)*dx + 3.0*spline_params_.d(index)*dx2;
 }
 
@@ -228,10 +236,12 @@ double CubicSpline::getSecondDerivative(double x) const
 
     x = unwrapInput(x);
     index = getIndex(x);
+
     x_i = spline_data_.x_data(index);
 
     dx = x-x_i;
     // y' = 2 c + 6 d dx
+    if(index == spline_data_.n_points-1) return 2.0*spline_params_.c(index);
     return 2.0*spline_params_.c(index) + 6.0*spline_params_.d(index)*dx;
 }
 }

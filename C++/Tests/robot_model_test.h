@@ -43,7 +43,7 @@ TEST(TestRobotModel, TestGetEEOrientation)
     robot = std::make_shared<mpcc::RobotModel>();
     mpcc::JointVector q0;
     q0.setZero();
-    q0 <<  -0.002, -0.001,  0.002, -1.574,  0.006,  1.584,  0.789;
+    q0 << 0, 0, 0, -M_PI/2, 0, M_PI/2, M_PI/4;
     Matrix3d r0 = Matrix3d::Zero();
     bool result;
     try
@@ -58,7 +58,6 @@ TEST(TestRobotModel, TestGetEEOrientation)
         std::cerr << e.what() << '\n';
         result = false;
     }
-
     EXPECT_TRUE(result);
 }
 
@@ -94,21 +93,31 @@ TEST(TestRobotModel, TestManipulability)
 {
     std::shared_ptr<mpcc::RobotModel> robot;
     robot = std::make_shared<mpcc::RobotModel>();
-    mpcc::JointVector q0;
-    q0 <<  0, 0, 0, -M_PI/2, 0, M_PI/2, M_PI/4;
-    double mani = 0;
+    mpcc::JointVector q0, dq, q1;
+    q0 <<  0, 0, 0, 0.1, 0, M_PI/2, M_PI/4;
+    dq = mpcc::JointVector::Ones()*0.01;
+    q1 = q0 + dq;
+    double mani0 = 0, mani1 = 0, mani_est = 0;
     VectorXd d_mani = VectorXd::Zero(PANDA_DOF);
     bool result;
     try
     {
         beg_ = hd_clock::now();
-        mani = robot->getManipulability(q0);
+        mani0 = robot->getManipulability(q0);
+        mani1 = robot->getManipulability(q1);
         d_mani = robot->getDManipulability(q0);
+        mani_est = mani0 + d_mani.dot(dq);
         auto duration = std::chrono::duration_cast<second>(hd_clock::now() - beg_).count();
         // std::cout << "Manipulability: \n" << mani << std::endl;
         // std::cout << "Gradient of Manipulability: \n" << d_mani.transpose() << std::endl;
         std::cout << "Time to get manipulability index and its gradient: " << duration*1e+3 << " [ms]!"<<std::endl;
-        result = true;
+        std::cout << std::fixed << std::setprecision(5) << "start     : "<< mani0 << std::endl; 
+        std::cout << std::fixed << std::setprecision(5) << "real      : "<< mani1 << std::endl; 
+        std::cout << std::fixed << std::setprecision(5) << "est       : "<< mani_est << std::endl; 
+        std::cout << std::fixed << std::setprecision(5) << "error[%]  : "<< fabs((mani_est-mani1)/mani1)*100 << std::endl; 
+
+        if(fabs((mani_est-mani1)/mani1)*100 < 5) result = true;
+        else result = false;
     }
     catch(const std::exception& e)
     {

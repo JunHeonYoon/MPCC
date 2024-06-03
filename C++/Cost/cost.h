@@ -20,32 +20,40 @@
 #include "config.h"
 #include "types.h"
 #include "Spline/arc_length_spline.h"
+#include "Model/robot_data.h"
+#include <vector>
 
 namespace mpcc{
 
-/// @brief 
-/*
-  second and first order term of cost in QP:
-  min 0.5 x^T Q x + 0.5 u^T R u + 0.5 x^T S u + q^T x + r^T u + 0.5 s^T Z s + z^T s
-  where x is state(NX)
-        u is control input(NU)
-        s is slack variable (NS)
-*/ 
-/// @param Q (Eigen::MatrixXd) second order term for state
-/// @param R (Eigen::MatrixXd) second order term for control inut
-/// @param S (Eigen::MatrixXd) second order term for state and control input
-/// @param q (Eigen::MatrixXd) first order term for state
-/// @param r (Eigen::MatrixXd) first order term for control inut
-/// @param Z (Eigen::MatrixXd) second order term for slack variable
-/// @param z (Eigen::MatrixXd) first order term for slack variable
-struct CostMatrix{
-    Q_MPC Q; // for stadyrodcon
-    R_MPC R; // for control input
-    S_MPC S; // for state and control input
-    q_MPC q; // for state 
-    r_MPC r; // for control input
-    Z_MPC Z;
-    z_MPC z;
+/// @brief Gradient of Cost wrt state and input
+/// @param f_x (Eigen::Matrix<double,NX,1>) Gradient of Cost wrt state
+/// @param f_u (Eigen::Matrix<double,NU,1>) Gradient of Cost wrt input
+struct CostGrad{
+    q_MPC f_x;
+    r_MPC f_u;
+
+    void setZero()
+    {
+        f_x.setZero();
+        f_u.setZero();
+    }
+};
+
+/// @brief Hessian of Cost wrt state and input
+/// @param f_xx (Eigen::Matrix<double,NX,NX>) Hessian of Cost wrt state
+/// @param f_uu (Eigen::Matrix<double,NU,NU>) Hessian of Cost wrt input
+/// @param f_xu (Eigen::Matrix<double,NX,NU>) Hessian of Cost wrt input
+struct CostHess{
+    Q_MPC f_xx;
+    R_MPC f_uu;
+    S_MPC f_xu;
+
+    void setZero()
+    {
+        f_xx.setZero();
+        f_uu.setZero();
+        f_xu.setZero();
+    }
 };
 
 /// @brief refernce X-Y-Z path position and its derivates wrt arc length (s)
@@ -68,8 +76,14 @@ struct TrackPoint{
     const double ddx_ref;
     const double ddy_ref;
     const double ddz_ref;
-    // const double theta_ref;
-    // const double dtheta_ref;
+};
+
+/// @brief refernce Orientation and its derivates wrt arc length (s)
+/// @param R_ref (Eigen::Matrix3d) reference R rotation matrix data
+/// @param dR_ref (Eigen::Vector3d) reference R'(s) rotation matrix data
+struct TrackOrienatation{
+    const Eigen::Matrix3d R_ref;
+    const Eigen::Vector3d dR_ref;
 };
 
 /// @brief error between reference and X-Y-Z position of the end-effector
@@ -86,58 +100,77 @@ struct ErrorInfo{
 
 class Cost {
 public:
-    Cost(const PathToJson &path, std::shared_ptr<RobotModel> robot);
+    Cost(const PathToJson &path);
     Cost();
-    
-    /// @brief compute cost for contouring error, heading error, control input, beta (side slip angle), soft constraint given current state
+
+    /// @brief compute cost for contouring error, heading error, control input given current state
     /// @param track (ArcLengthSpline) reference track
     /// @param x (State) current state
     /// @param u (Input) current control input
+    /// @param rb (RobotData) kinemetic information (ex. EE-pose, Jacobian, ...) wrt current state
     /// @param k (int) receding horizon index
-    /// @return (CostMatrix) second order approximation matrix of cost
-    CostMatrix getCost(const ArcLengthSpline &track,const State &x,const Input &u,int k) const;
+    /// @param obj (*double) exact value of cost
+    /// @param grad (*CostGrad) gradient of cost
+    /// @param hess (*CostHess) hessian of cost
+    void getCost(const ArcLengthSpline &track,const State &x,const Input &u,const RobotData &rb,int k,
+                 double* obj,CostGrad* grad,CostHess* hess);
 
 private:
     /// @brief compute all the geometry information of the track at a given current arc length
     /// @param track (ArcLengthSpline) reference track
     /// @param x (State) current state
-    /// @return (TrackPoint) reference X-Y-theta path position and its derivates wrt arc length (s)
-    TrackPoint getRefPoint(const ArcLengthSpline &track,const State &x) const;
+    /// @return (TrackPoint) reference X-Y-Z path position and its derivates wrt arc length (s)
+    TrackPoint getRefPoint(const ArcLengthSpline &track,const State &x);
+
+    /// @brief compute all the geometry information of the track at a given current arc length
+    /// @param track (ArcLengthSpline) reference track
+    /// @param x (State) current state
+    /// @return (TrackPoint) reference Orientation and its derivates wrt arc length (s)
+    TrackOrienatation getRefOrientation(const ArcLengthSpline &track,const State &x);
 
     /// @brief compute error between reference track and X-Y position of the car
     /// @param track (ArcLengthSpline) reference track
     /// @param x (State) current state
     /// @return (ErrorInfo) contouring and lag error and its derivatives wrt state
-    ErrorInfo  getErrorInfo(const ArcLengthSpline &track,const State &x) const;
+    ErrorInfo  getErrorInfo(const ArcLengthSpline &track,const State &x,const RobotData &rb);
+
 
     /// @brief compute contouring cost given current state
     /// @param track (ArcLengthSpline) reference track
     /// @param x (State) current state
+    /// @param rb (RobotData) kinemetic information (ex. EE-pose, Jacobian, ...) wrt current state
     /// @param k (int) receding horizon index
-    /// @return (CostMatrix) second order approximation (wrt current state) matrix of contouring cost
-    CostMatrix getContouringCost(const ArcLengthSpline &track, const State &x,int k) const;
+    /// @param obj (*double) exact value of contouring cost
+    /// @param grad (*CostGrad) gradient of contouring cost
+    /// @param hess (*CostHess) hessian of contouring cost
+    void getContouringCost(const ArcLengthSpline &track,const State &x,const RobotData &rb,int k, 
+                           double* obj,CostGrad* grad,CostHess* hess);
 
-    // /// @brief compute heading angle (yaw) cost given current state
-    // /// @param track (ArcLengthSpline) reference track
-    // /// @param x (State) current state
-    // /// @param k (int) receding horizon index
-    // /// @return (CostMatrix) second order approximation (wrt current state) matrix of heading cost
-    // CostMatrix getHeadingCost(const ArcLengthSpline &track, const State &x,int k) const;
+    /// @brief compute heading angle cost given current state
+    /// @param track (ArcLengthSpline) reference track
+    /// @param x (State) current state
+    /// @param rb (RobotData) kinemetic information (ex. EE-pose, Jacobian, ...) wrt current state
+    /// @param obj (*double) exact value of heading cost
+    /// @param grad (*CostGrad) gradient of heading cost
+    /// @param grad (*CostHess) hessian of heading cost
+    void getHeadingCost(const ArcLengthSpline &track,const State &x,const RobotData &rb,
+                        double* obj,CostGrad* grad,CostHess* hess);
 
     /// @brief compute control input cost
     /// @param track (ArcLengthSpline) reference track
     /// @param x (State) current state
     /// @param u (Input) current control input
-    /// @return (CostMatrix) cost matrix for control input
-    CostMatrix getInputCost(const ArcLengthSpline &track,const State &x, const Input &u) const;
-
-    /// @brief compute soft constraint cost
-    /// @return (CostMatrix) cost matrix for slack variables
-    CostMatrix getSoftConstraintCost() const;
+    /// @param rb (RobotData) kinemetic information (ex. EE-pose, Jacobian, ...) wrt current state
+    /// @param k (int) receding horizon index
+    /// @param obj (*double) exact value for control input cost
+    /// @param grad (*CostGrad) gradient of control input cost
+    /// @param grad (*CostHess) hessian of control input cost
+    void getInputCost(const ArcLengthSpline &track,const State &x,const Input &u,const RobotData &rb,int k, 
+                      double* obj,CostGrad* grad,CostHess* hess);
+    
 
     CostParam cost_param_;
     Param param_;
-    std::shared_ptr<RobotModel> robot_;
 };
 }
 #endif //MPCC_COST_H

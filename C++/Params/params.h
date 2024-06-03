@@ -31,43 +31,10 @@ using json = nlohmann::json;
 // // dynamic model parameter class 
 class Param{
 public:
-//     double Cm1;
-//     double Cm2;
-//     double Cr0;
-//     double Cr2;
-
-//     double Br;
-//     double Cr;
-//     double Dr;
-
-//     double Bf;
-//     double Cf;
-//     double Df;
-
-//     double m;
-//     double Iz;
-//     double lf;
-//     double lr;
-
-//     double car_l;
-//     double car_w;
-
-//     double g;
-
-//     double r_in; // length from track center to inner boundary 
-//     double r_out; // length from track center to outter boundary
-
     double max_dist_proj;
-
-//     double e_long; // tire specific ellipse parameters (tire contraints)
-//     double e_eps;
-
-//     double max_alpha; // maximum slip angle for front tire
-
     double desired_ee_velocity; // desired end-effector velocity
     double s_trust_region;
-
-//     double vx_zero;
+    double deacc_ratio; // starting ratio to deaccelerate movement of s(path parameter)
 
     Param();
     Param(std::string file);
@@ -90,12 +57,6 @@ public:
     double r_dVs;    // weight for accelerate of path parameter
     double r_ee;     // weight for EE velocity error
 
-    // Soft constraint cost
-    double sc_quad_selcol;
-    double sc_quad_sing;
-
-    double sc_lin_selcol;
-    double sc_lin_sing;
 
     CostParam();
     CostParam(std::string file);
@@ -207,11 +168,25 @@ public:
     TU_MPC T_u;
     TU_MPC T_u_inv;
 
-    TS_MPC T_s;
-    TS_MPC T_s_inv;
-
     NormalizationParam();
     NormalizationParam(std::string file);
+};
+
+class SQPParam{
+    public:
+        double eps_prim;
+        double eps_dual;
+        unsigned int max_iter;
+        unsigned int line_search_max_iter;
+        bool do_SOC;
+        bool use_BFGS;
+
+        double line_search_tau;
+        double line_search_eta;
+        double line_search_rho;
+
+        SQPParam();
+        SQPParam(std::string file);
 };
 }
 #endif //MPCC_PARAMS_H

@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
+#include "model_integrator_test.h"
 #include "robot_model_test.h"
 #include "self_collision_test.h"
-#include "model_integrator_test.h"
 #include "spline_test.h"
 #include "constraints_test.h"
 #include "cost_test.h"

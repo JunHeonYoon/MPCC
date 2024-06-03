@@ -19,20 +19,24 @@
 
 #include "config.h"
 #include "types.h"
-
-
-
+#include "Spline/arc_length_spline.h"
 #include <array>
+
 namespace mpcc{
 struct OptVariables;
-struct Stage;
+enum Status
+{ 
+    SOLVED,    
+    MAX_ITER_EXCEEDED, 
+    INVALID_SETTINGS 
+};
+
 class SolverInterface {
-public:
-    // virtual std::array<OptVariables,N+1> solveMPC(std::array<Stage,N+1> &stages,const State &x0,int *status) = 0;
-    virtual std::array<OptVariables,N+1> solveMPC(std::array<Stage,N+1> &stages,const std::array<OptVariables,N+1> &initial_guess,int *status) = 0;
-    virtual ~SolverInterface(){
-        std::cout << "Deleting Solver Interface" << std::endl;
-    }
+    public:
+        virtual void setTrack(const ArcLengthSpline track) = 0;
+        virtual void setInitialGuess(const std::array<OptVariables,N+1> &initial_guess) = 0;
+        virtual std::array<OptVariables,N+1> solveOCP(Status *status) = 0;
+        virtual ~SolverInterface(){std::cout << "Deleting Solver Interface" << std::endl;}
 };
 }
 

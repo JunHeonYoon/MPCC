@@ -72,14 +72,6 @@ JointVector inputToJointVector(const Input &u)
     return uk;
 }
 
-SlackVector slackToVector(const Slack &s)
-{
-    SlackVector sk;
-    sk(0) = s.selcol;
-    sk(1) = s.sing;
-    return sk;
-}
-
 State vectorToState(const StateVector &xk)
 {
     State x;
@@ -111,14 +103,6 @@ Input vectorToInput(const InputVector &uk)
     return u;
 }
 
-Slack vectorToSlack(const SlackVector &sk)
-{
-    Slack s;
-    s.selcol = sk[0];
-    s.sing = sk[1];
-    return s;
-}
-
 State arrayToState(double *xk)
 {
     State x;
@@ -148,13 +132,5 @@ Input arrayToInput(double *uk)
     u.dVs = uk[7];
 
     return u;
-}
-
-Slack arrayToSlack(double *sk)
-{
-    Slack s;
-    s.selcol = sk[0];
-    s.sing = sk[1];
-    return s;
 }
 }

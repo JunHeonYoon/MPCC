@@ -23,7 +23,6 @@
 #include "MPC/mpc.h"
 #include "Model/integrator.h"
 #include "Params/track.h"
-#include "Plotting/plotting.h"
 
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -39,74 +38,110 @@ int main() {
                            jsonConfig["cost_path"],
                            jsonConfig["bounds_path"],
                            jsonConfig["track_path"],
-                           jsonConfig["normalization_path"]};
+                           jsonConfig["normalization_path"],
+                           jsonConfig["sqp_path"]};
 
     Integrator integrator = Integrator(jsonConfig["Ts"],json_paths);
-    // Plotting plotter = Plotting(jsonConfig["Ts"],json_paths);
 
     std::shared_ptr<RobotModel> robot;
     robot = std::make_shared<mpcc::RobotModel>();
+
     std::shared_ptr<SelCollNNmodel> selcolNN;
     selcolNN = std::make_shared<SelCollNNmodel>();
     Eigen::Vector2d n_hidden;
-    n_hidden << 128, 128;
+    n_hidden << 128, 64;
     selcolNN->setNeuralNetwork(PANDA_DOF, 1, n_hidden, true);
 
     std::list<MPCReturn> log;
-    MPC mpc(jsonConfig["max_n_sqp"],jsonConfig["n_reset"],jsonConfig["max_n_sqp_linesearch"],jsonConfig["Ts"],json_paths,robot,selcolNN);
+    MPC mpc(jsonConfig["Ts"],json_paths,robot,selcolNN);
 
-    State x0 = {0, 0, 0, -M_PI/2, 0, M_PI/2, M_PI/4, 0, 0};
-    JointVector q0 = stateToJointVector(x0);
-    Eigen::Vector3d ee_pos0 = robot->getEEPosition(q0);
+    State x0 = {0., 0., 0., -M_PI/2, 0, M_PI/2, M_PI/4, 0.0, 0.0};
+    Eigen::Vector3d ee_pos = robot->getEEPosition(stateToJointVector(x0));
+    Eigen::Matrix3d ee_ori = robot->getEEOrientation(stateToJointVector(x0));
 
     Track track = Track(json_paths.track_path);
-    TrackPos track_xyz = track.getTrack(ee_pos0);
+    TrackPos track_xyzr = track.getTrack(ee_pos);
 
-    mpc.setTrack(track_xyz.X,track_xyz.Y,track_xyz.Z);
+    mpc.setTrack(track_xyzr.X,track_xyzr.Y,track_xyzr.Z,track_xyzr.R);
+
+    Eigen::Vector3d end_point;
+    Eigen::Matrix3d end_ori;
+    end_point(0) = track_xyzr.X(track_xyzr.X.size() - 1); 
+    end_point(1) = track_xyzr.Y(track_xyzr.Y.size() - 1);
+    end_point(2) = track_xyzr.Z(track_xyzr.Z.size() - 1);
+    end_ori = track_xyzr.R[track_xyzr.R.size() - 1];
+    std::cout<<"end posi: "<<end_point.transpose()<<std::endl;
 
     ofstream debug_file;
     debug_file.open("debug.txt");
 
     std::cout << "============================ Init ============================"<<std::endl;
-    std::cout << "q now    :\t";
-    std::cout << std::fixed << std::setprecision(3) << q0.transpose() << std::endl;
-    std::cout << "x        :\t";
-    std::cout << std::fixed << std::setprecision(3) << robot->getEEPosition(q0).transpose() << std::endl;
-    std::cout << "R        :\t" << std::endl;
-    std::cout << std::fixed << std::setprecision(3) << robot->getEEOrientation(q0) << std::endl;
-    std::cout << "J        :\t" << std::endl;
-    std::cout << std::fixed << std::setprecision(3) << robot->getJacobianv(q0) << std::endl;
+    std::cout << "q now           :\t";
+    std::cout << std::fixed << std::setprecision(6) << stateToJointVector(x0).transpose() << std::endl;
+    std::cout << "x               :\t";
+    std::cout << std::fixed << std::setprecision(6) << ee_pos.transpose() << std::endl;
+    std::cout << "R               :" << std::endl;
+    std::cout << std::fixed << std::setprecision(6) << ee_ori << std::endl;
+    std::cout << "manipulability  :\t";
+    std::cout << std::fixed << std::setprecision(6) << robot->getManipulability(stateToJointVector(x0)) << std::endl;
+    std::cout << "min distance[cm]:\t";
+    std::cout << std::fixed << std::setprecision(6) << (selcolNN->calculateMlpOutput(stateToJointVector(x0),false)).first << std::endl;
+    std::cout << "s               :";
+    std::cout << std::fixed << std::setprecision(6) << x0.s << std::endl;
+    std::cout << "vs              :";
+    std::cout << std::fixed << std::setprecision(6) << x0.vs << std::endl;
+    std::cout << "x_error         :";
+    std::cout << std::fixed << std::setprecision(6) << (end_point - ee_pos).transpose() << std::endl;
+    std::cout << "R error         :";
+    std::cout << std::fixed << std::setprecision(6) << getInverseSkewVector(LogMatrix(end_ori.transpose()*ee_ori)).transpose() << std::endl;
     std::cout << "==============================================================="<<std::endl;
-    debug_file << q0.transpose() << std::endl;
+    debug_file << stateToJointVector(x0).transpose() << std::endl;
 
-    // for(int i=0;i<jsonConfig["n_sim"];i++)
     for(int i=0;i<jsonConfig["n_sim"];i++)
     {
-        std::cout<<"sim step: "<< i << std::endl;
         MPCReturn mpc_sol = mpc.runMPC(x0);
         x0 = integrator.simTimeStep(x0,mpc_sol.u0,jsonConfig["Ts"]);
+        ee_pos = robot->getEEPosition(stateToJointVector(x0));
+        ee_ori = robot->getEEOrientation(stateToJointVector(x0));
 
         std::cout << "==============================================================="<<std::endl;
         std::cout << "time step: " << i << std::endl;;
-        std::cout << "q now    :\t";
-        std::cout << std::fixed << std::setprecision(3) << stateToJointVector(x0).transpose() << std::endl;
-        std::cout << "q_dot now    :\t";
-        std::cout << std::fixed << std::setprecision(3) << inputToJointVector(mpc_sol.u0).transpose()  << std::endl;
-        std::cout << "x        :\t";
-        std::cout << std::fixed << std::setprecision(3) << robot->getEEPosition(stateToJointVector(x0)).transpose() << std::endl;
-        std::cout << "x_dot    :\t";
-        std::cout << std::fixed << std::setprecision(3) << (robot->getJacobianv(stateToJointVector(x0))*inputToJointVector(mpc_sol.u0)).transpose() << std::endl;
-        std::cout << std::fixed << std::setprecision(3) << (robot->getJacobianv(stateToJointVector(x0))*inputToJointVector(mpc_sol.u0)).norm() << std::endl;
-        // std::cout << "R        :\t" << std::endl;
-        // std::cout << std::fixed << std::setprecision(3) << robot->getEEOrientation(stateToJointVector(x0)) << std::endl;
-        // std::cout << "J        :\t" << std::endl;
-        // std::cout << std::fixed << std::setprecision(3) << robot->getJacobianv(stateToJointVector(x0)) << std::endl;
+        std::cout << "q now           :\t";
+        std::cout << std::fixed << std::setprecision(6) << stateToJointVector(x0).transpose() << std::endl;
+        std::cout << "q_dot now       :\t";
+        std::cout << std::fixed << std::setprecision(6) << inputToJointVector(mpc_sol.u0).transpose()  << std::endl;
+        std::cout << "x               :\t";
+        std::cout << std::fixed << std::setprecision(6) << ee_pos.transpose() << std::endl;
+        std::cout << "x_dot           :\t";
+        std::cout << std::fixed << std::setprecision(6) << (robot->getJacobianv(stateToJointVector(x0))*inputToJointVector(mpc_sol.u0)).transpose() << std::endl;
+        std::cout << std::fixed << std::setprecision(6) << (robot->getJacobianv(stateToJointVector(x0))*inputToJointVector(mpc_sol.u0)).norm() << std::endl;
+        std::cout << "R               :" << std::endl;
+        std::cout << std::fixed << std::setprecision(6) << ee_ori << std::endl;
+        std::cout << "manipulability  :\t";
+        std::cout << std::fixed << std::setprecision(6) << robot->getManipulability(stateToJointVector(x0)) << std::endl;
+        std::cout << "min distance[cm]:\t";
+        std::cout << std::fixed << std::setprecision(6) << (selcolNN->calculateMlpOutput(stateToJointVector(x0),false)).first << std::endl;
+        std::cout << "s               :";
+        std::cout << std::fixed << std::setprecision(6) << x0.s << std::endl;
+        std::cout << "vs              :";
+        std::cout << std::fixed << std::setprecision(6) << x0.vs << std::endl;
+        std::cout << "dVs              :";
+        std::cout << std::fixed << std::setprecision(6) << mpc_sol.u0.dVs << std::endl;
+        std::cout << "x_error         :";
+        std::cout << std::fixed << std::setprecision(6) << (end_point - ee_pos).transpose() << std::endl;
+        std::cout << "R error         :";
+        std::cout << std::fixed << std::setprecision(6) << getInverseSkewVector(LogMatrix(end_ori.transpose()*ee_ori)).transpose() << std::endl;
         std::cout << "==============================================================="<<std::endl;
+        
         debug_file << stateToJointVector(x0).transpose() << std::endl;
         log.push_back(mpc_sol);
+
+        if((end_point - ee_pos).norm() < 1e-2 && (getInverseSkewVector(LogMatrix(end_ori.transpose()*ee_ori))).norm() < 1e-3 && x0.s > 0.1)
+        {
+            std::cout << "End point reached!!!"<< std::endl;
+            break;
+        }
     }
-    // plotter.plotRun(log,track_xyz);
-    // plotter.plotSim(log,track_xyz);
 
     double mean_time = 0.0;
     double max_time = 0.0;

@@ -32,31 +32,17 @@ using json = nlohmann::json;
 /// @param X   (const Eigen::VectorXd) X waypoints
 /// @param Y   (const Eigen::VectorXd) y waypoints
 /// @param Z   (const Eigen::VectorXd) z waypoints
-/// @param R11 (const Eigen::VectorXd) R_11 for rotation matrix
-/// @param R12 (const Eigen::VectorXd) R_12 for rotation matrix
-/// @param R13 (const Eigen::VectorXd) R_13 for rotation matrix
-/// @param R21 (const Eigen::VectorXd) R_21 for rotation matrix
-/// @param R22 (const Eigen::VectorXd) R_22 for rotation matrix
-/// @param R23 (const Eigen::VectorXd) R_23 for rotation matrix
-/// @param R31 (const Eigen::VectorXd) R_31 for rotation matrix
-/// @param R32 (const Eigen::VectorXd) R_32 for rotation matrix
-/// @param R33 (const Eigen::VectorXd) R_33 for rotation matrix
+/// @param R   (const std::vector<Eigen::Matrix3d>) R for rotation matrix
+
 struct TrackPos {
     // for position
     const Eigen::VectorXd X;
     const Eigen::VectorXd Y;
     const Eigen::VectorXd Z;
 
-    // // for orientation
-    // const Eigen::VectorXd R11;
-    // const Eigen::VectorXd R12;
-    // const Eigen::VectorXd R13;
-    // const Eigen::VectorXd R21;
-    // const Eigen::VectorXd R22;
-    // const Eigen::VectorXd R23;
-    // const Eigen::VectorXd R31;
-    // const Eigen::VectorXd R32;
-    // const Eigen::VectorXd R33;
+    // for orientation
+    const std::vector<Eigen::Matrix3d> R;
+
 };
 
 class Track {
@@ -72,16 +58,7 @@ private:
     Eigen::VectorXd X;
     Eigen::VectorXd Y;
     Eigen::VectorXd Z;
-
-    // Eigen::VectorXd R11;
-    // Eigen::VectorXd R12;
-    // Eigen::VectorXd R13;
-    // Eigen::VectorXd R21;
-    // Eigen::VectorXd R22;
-    // Eigen::VectorXd R23;
-    // Eigen::VectorXd R31;
-    // Eigen::VectorXd R32;
-    // Eigen::VectorXd R33;
+    std::vector<Eigen::Matrix3d> R;
 };
 };
 

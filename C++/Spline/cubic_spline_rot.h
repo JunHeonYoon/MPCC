@@ -19,17 +19,20 @@
 
 #include "config.h"
 #include <map>
+#include <vector>
 
-// Rotation matrix cubic spline
-// https://onlinelibrary.wiley.com/doi/pdf/10.1002/%28SICI%291097-0207%2819990910%2946%3A1%3C45%3A%3AAID-NME662%3E3.0.CO%3B2-K
+// Original Paper
+// Kang, I. G., and F. C. Park.
+// "Cubic spline algorithms for orientation interpolation."
 
 namespace mpcc{
-/// @brief spline parameter struct y = a + b dx + c dx^2 + d dx^3, caution: x, y is not path, but function param
+
+/// @brief spline parameter struct R = R_i*ExpMatrix(LogMatrix(R_i^T * R_i+1))[a + b dx + c dx^2 + d dx^3]), caution: x, R is not path, but function param
 /// @param a (Eigen::VectorXd) constant
 /// @param b (Eigen::VectorXd) first order
 /// @param c (Eigen::VectorXd) second order
 /// @param d (Eigen::VectorXd) third order
-struct SplineParams{
+struct SplineRotParams{
     Eigen::VectorXd a;
     Eigen::VectorXd b;
     Eigen::VectorXd c;
@@ -37,76 +40,92 @@ struct SplineParams{
 };
 
 /// @brief input data for spline
-/// @param x_data (Eigen::VectorXd) x data, caution: x, y is not path, but function param
-/// @param y_data (Eigen::VectorXd) y data, caution: x, y is not path, but function param
+/// @param x_data (Eigen::VectorXd) x data, caution: x, R is not path, but function param
+/// @param R_data (std::vector<Eigen::Matrix3d>) R data, caution: x, R is not path, but function param
 /// @param n_points (int) number of points
 /// @param is_regular (bool) regular (True) or irregular (False) spaced points in x direction
 /// @param delta_x (double) spacing of regular space points
 /// @param x_map (std::map<double,int>) if getting x_data, ouput is index of the x_data
-struct SplineData{
+struct SplineRotData{
     Eigen::VectorXd x_data;    
-    Eigen::VectorXd y_data;    
+    std::vector<Eigen::Matrix3d> R_data;    
     int n_points;
     bool is_regular;
     double delta_x;
     std::map<double,int> x_map;
 };
 
-class CubicSpline {
+
+/// @brief calculate skew symmetric matrix from 3D vector
+/// @param v (Eigen::Vector3d) input vector
+/// @return (Eigen::Matrix3d) skew symmetric matrix
+Eigen::Matrix3d getSkewMatrix(const Eigen::Vector3d &v);
+
+/// @brief calculate inverse of skew symmetric matrix from skew symmetric matrix
+/// @param v (Eigen::Matrix3d) input skew symmetric matrix
+/// @return (Eigen::Vector3d) 3D vector
+Eigen::Vector3d getInverseSkewVector(const Eigen::Matrix3d &R);
+
+/// @brief calculate matrix logarithm
+/// @param v (Eigen::Matrix3d) input matrix; rotation matrix
+/// @return (Eigen::Matrix3d) log(Matrix); skew symmetric matrix
+Eigen::Matrix3d LogMatrix(const Eigen::Matrix3d &R);
+
+/// @brief calculate matrix exponential
+/// @param v (Eigen::Matrix3d) input matrix; skew symmetric matrix
+/// @return (Eigen::Matrix3d) exp(Matrix); rotation matrix
+Eigen::Matrix3d ExpMatrix(const Eigen::Matrix3d &sk);
+
+class CubicSplineRot {
 public:
-    CubicSpline();
+    CubicSplineRot();
 
-    /// @brief compute cubic spline parameters (SplineParams) given x, y data, caution: x, y is not path, but function param
-    /// @param x_in (Eigen::VectorXd) x data, caution: x, y is not path, but function param
-    /// @param y_in (Eigen::VectorXd) y data, caution: x, y is not path, but function param
+    /// @brief compute cubic spline parameters (SplineRotParams) given x, R data, caution: x, R is not path, but function param
+    /// @param x_in (Eigen::VectorXd) x data, caution: x, R is not path, but function param
+    /// @param R_in (std::vector<Eigen::Matrix3d>) R data, caution: x, R is not path, but function param
     /// @param is_regular (bool) regular (True) or irregular (False) spaced points in x direction
-    void genSpline(const Eigen::VectorXd &x_in,const Eigen::VectorXd &y_in,bool is_regular);
+    void genSpline(const Eigen::VectorXd &x_in,const std::vector<Eigen::Matrix3d> &R_in,bool is_regular);
 
-    /// @brief compute spline value y = a + b dx + c dx^2 + d dx^3 given x data
-    /// @param x (double) x data, caution: x, y is not path, but function param
-    /// @return (double) y data, caution: x, y is not path, but function param
-    double getPoint(double x) const;
+    /// @brief compute spline value R = R_i*ExpMatrix(LogMatrix(R_i^T * R_i+1))[a + b dx + c dx^2 + d dx^3]) given x data
+    /// @param x (double) x data, caution: x, R is not path, but function param
+    /// @return (Eigen::Matrix3d) R data, caution: x, R is not path, but function param
+    Eigen::Matrix3d getPoint(double x) const;
 
-    /// @brief compute first derivative of spline  y' = b + 2 c dx + 3 d dx^2 given x data
-    /// @param x (double) x data, caution: x, y is not path, but function param
-    /// @return (double) y' data, caution: x, y is not path, but function param
-    double getDerivative(double x) const;
-
-    /// @brief compute second derivative of spline  y'' = 2 c + 6 d dx given x data
-    /// @param x (double) x data, caution: x, y is not path, but function param
-    /// @return (double) y'' data, caution: x, y is not path, but function param
-    double getSecondDerivative(double x) const;
+    /// @brief compute first derivative of spline; LogMatrix(R_i^T * R_i+1))[b + 2c dx + 3d dx^2]) given x data
+    /// @param x (double) x data, caution: x, R is not path, but function param
+    /// @return (Eigen::Vector3d) Rotation derivative wrt x, caution: x, R is not path, but function param
+    Eigen::Vector3d getDerivative(double x) const;
 
 private:
     bool data_set_;
 
     /// @brief set regular data points
-    /// @param x_in (Eigen::VectorXd) x data, caution: x, y is not path, but function param
-    /// @param y_in (Eigen::VectorXd) y data, caution: x, y is not path, but function param
+    /// @param x_in (Eigen::VectorXd) x data, caution: x, R is not path, but function param
+    /// @param R_in (std::vector<Eigen::Matrix3d>) R data, caution: x, R is not path, but function param
     /// @param delta_x (double) spacing of regular space points
-    void setRegularData(const Eigen::VectorXd &x_in,const Eigen::VectorXd &y_in,double delta_x);
+    void setRegularData(const Eigen::VectorXd &x_in,const std::vector<Eigen::Matrix3d> &R_in,double delta_x);
 
     /// @brief set irregular data points
-    /// @param x_in (Eigen::VectorXd) x data, caution: x, y is not path, but function param
-    /// @param y_in (Eigen::VectorXd) y data, caution: x, y is not path, but function param
-    void setData(const Eigen::VectorXd &x_in,const Eigen::VectorXd &y_in);
+    /// @param x_in (Eigen::VectorXd) x data, caution: x, R is not path, but function param
+    /// @param R_in (std::vector<Eigen::Matrix3d>) R data, caution: x, R is not path, but function param
+    void setData(const Eigen::VectorXd &x_in,const std::vector<Eigen::Matrix3d> &R_in);
 
-    /// @brief compute cubic spline parameters (SplineParams)
+    /// @brief compute cubic spline parameters (SplineRotParams)
     /// @return (bool) success or fail
-    bool compSplineParams();
+    bool compSplineRotParams();
 
     /// @brief find the closest x point in the spline given a x value
-    /// @param x (double) x data, caution: x, y is not path, but function param
-    /// @return (bool) index of x closest point
+    /// @param x (double) x data, caution: x, R is not path, but function param
+    /// @return (int) index of x closest point
     int getIndex(double x) const;
 
     /// @brief if x(arc length) is larger than total arc length, then x become unwrapped. (like angle is -pi ~ pi)
-    /// @param x (double)  x data, caution: x, y is not path, but function param
+    /// @param x (double)  x data, caution: x, R is not path, but function param
     /// @return (double) unwrapped x data
     double unwrapInput(double x) const;
 
-    SplineParams spline_params_;
-    SplineData spline_data_;
+    SplineRotParams spline_params_;
+    SplineRotData spline_data_;
 };
 }
-#endif //MPCC_CUBIC_SPLINE_H
+#endif //MPCC_CUBIC_SPLINE_ROT_H

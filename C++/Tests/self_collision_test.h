@@ -4,34 +4,46 @@
 #include "Constraints/SelfCollision/SelfCollisionModel.h"
 #include "types.h"
 #include "gtest/gtest.h"
+#include <chrono>
+
+
+typedef std::chrono::high_resolution_clock hd_clock;
+typedef std::chrono::duration<double, std::ratio<1> > second;
 
 TEST(TestSelfCollision, TestCalculateMLPOutput)
 {
+    std::chrono::time_point<hd_clock> beg;
     std::shared_ptr<mpcc::SelCollNNmodel> selcol;
     selcol = std::make_shared<mpcc::SelCollNNmodel>();
-    mpcc::JointVector q0;
+    mpcc::JointVector q0, dq, q1;
     q0 <<  0, 0, 0, -M_PI/2, 0,  M_PI/2,  M_PI/4;
+    dq = mpcc::JointVector::Ones()*0.01;
+    q1 = q0 + dq;
     bool result;
     try
     {
         Eigen::Vector2d n_hidden;
-        n_hidden << 128, 128;
+        n_hidden << 128, 64;
         selcol->setNeuralNetwork(PANDA_DOF, 1, n_hidden, true);
-        auto pred = selcol->calculateMlpOutput(q0, false);
-        Eigen::VectorXd y = pred.first;
-        Eigen::MatrixXd y_jac = pred.second;
-        // std:cout<<"y_jac size: "<< y_jac.rows()<< " X "<< y_jac.cols()<<std::endl;0
-        
+        beg = hd_clock::now();
+        auto pred0 = selcol->calculateMlpOutput(q0, false);
+        double min_dist0 = pred0.first.value();
+        Eigen::MatrixXd min_dist0_jac = pred0.second;
+        auto duration = std::chrono::duration_cast<second>(hd_clock::now() - beg).count(); 
 
-        // std::cout << "y: \n" << std::fixed << std::setprecision(3) <<
-        //  y.transpose() << std::endl;
-        //  std::cout << "y_jac: \n" << std::fixed << std::setprecision(3) <<
-        //  y_jac << std::endl;
+        auto pred1 = selcol->calculateMlpOutput(q1,false);
+        double min_dist1 = pred1.first.value();
 
-        // model output
-        // y = 21.50005
-        // jac = -0.0242, -0.1494,  0.0898,  7.2674,  0.1791,  0.3918,  0.0249
-        result = true;
+        double min_est = min_dist0 + (min_dist0_jac*dq).value();
+
+        std::cout << "Time to get self collision SDF and its gradient: " << duration*1e+3 << " [ms]!"<<std::endl;
+        std::cout << std::fixed << std::setprecision(5) << "start     : "<< min_dist0 << std::endl; 
+        std::cout << std::fixed << std::setprecision(5) << "real      : "<< min_dist1 << std::endl; 
+        std::cout << std::fixed << std::setprecision(5) << "est       : "<< min_est << std::endl; 
+        std::cout << std::fixed << std::setprecision(5) << "error[%]  : "<< fabs((min_est-min_dist1)/min_dist1)*100 << std::endl; 
+
+        if(fabs((min_est-min_dist1)/min_dist1)*100 < 5) result = true;
+        else result = false;
     }
     catch(const std::exception& e)
     {

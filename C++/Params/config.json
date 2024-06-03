@@ -1,8 +1,6 @@
 
 {
-  "max_n_sqp": 10,
-  "n_reset": 5,
-  "max_n_sqp_linesearch" : 5,
+  "n_reset": 3,
   "n_sim": 1000,
   "Ts": 0.01,
   
@@ -10,5 +8,6 @@
   "cost_path": "Params/cost.json",
   "bounds_path": "Params/bounds.json",
   "track_path": "Params/track.json",
-  "normalization_path": "Params/normalization.json"
+  "normalization_path": "Params/normalization.json",
+  "sqp_path": "Params/sqp.json"  
 }
