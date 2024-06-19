@@ -1,26 +1,20 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.10)
 project(MPCC)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "-O2")
 
-LIST( APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" )
-MESSAGE( STATUS "CMAKE_MODULE_PATH: " ${CMAKE_MODULE_PATH} )
+set(CMAKE_CXX_FLAGS "-O2")
 
-include_directories(.)
-# include_directories(External/osqp/lib/include)
-# include_directories(External/osqp-eigen/lib/include)
-find_package(OsqpEigen REQUIRED)
-include_directories(External/matplotlib)
-# include_directories(External/Eigen)
+option(USE_CVPLOT "Use cv-plot library" ON)
+MESSAGE( STATUS "Using CvPlot: " ${USE_CVPLOT} )
+
+add_definitions(-DBUILD_DIRECTORY=\"${CMAKE_SOURCE_DIR}\")
+
 find_package(Eigen3 REQUIRED)
-include_directories(${EIGEN3_INCLUDE_DIR})
-include_directories(External/Json/include)
-# include_directories(External/rbdl/lib/include)
 find_package(RBDL REQUIRED)
-
-find_package(GTest REQUIRED)
-include_directories(${GTEST_INCLUDE_DIRS})
+find_package(OsqpEigen REQUIRED)
+include_directories(.)
 
 add_library(MPCC_LIB SHARED
         config.h
@@ -45,21 +39,24 @@ add_library(MPCC_LIB SHARED
         Params/track.cpp
         Params/track.h
         )
-target_link_libraries(MPCC_LIB 
-        ${catkin_LIBRARIES} 
+target_link_libraries(MPCC_LIB PUBLIC
         ${RBDL_LIBRARY} 
-        ${RBDL_URDFReader_LIBRARY} 
-        # ${CMAKE_SOURCE_DIR}/External/osqp/lib/lib/libosqp.so 
-        # ${CMAKE_SOURCE_DIR}/External/osqp-eigen/lib/lib/libOsqpEigen.so
         OsqpEigen::OsqpEigen 
 )
 
-add_executable(MPCC main.cpp)
-find_package(Python COMPONENTS Development)
-target_include_directories(MPCC PRIVATE ${Python_INCLUDE_DIRS})
-target_link_libraries(MPCC ${Python_LIBRARIES} MPCC_LIB)
+add_executable(MPCC_EXE main.cpp)
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+target_link_libraries(MPCC_EXE MPCC_LIB)
 
-add_executable(TEST
+if(USE_CVPLOT)
+        find_package (OpenCV REQUIRED)
+        include_directories(${OpenCV_INCLUDE_DIRS})
+        include_directories(External/cv-plot/lib/include)
+        target_link_libraries(MPCC_EXE ${OpenCV_LIBS} ${CMAKE_SOURCE_DIR}/External/cv-plot/lib/lib/libCvPlot.so)
+        target_compile_definitions(MPCC_EXE PRIVATE USE_CVPLOT)
+endif()
+
+add_executable(MPCC_TEST
         Tests/main_test.cpp
         Tests/model_integrator_test.h
         Tests/robot_model_test.h
@@ -68,7 +65,7 @@ add_executable(TEST
         Tests/constraints_test.h
         Tests/cost_test.h
 )
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR})
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
 find_package(Python COMPONENTS Development)
-target_include_directories(TEST PRIVATE ${Python_INCLUDE_DIRS})
-target_link_libraries(TEST PRIVATE MPCC_LIB gtest gtest_main pthread ${Python_LIBRARIES})
+target_include_directories(MPCC_TEST PRIVATE ${Python_INCLUDE_DIRS})
+target_link_libraries(MPCC_TEST PRIVATE MPCC_LIB gtest gtest_main pthread ${Python_LIBRARIES})

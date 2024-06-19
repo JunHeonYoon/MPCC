@@ -20,8 +20,8 @@ namespace mpcc{
 ArcLengthSpline::ArcLengthSpline()
 { 
 }
-ArcLengthSpline::ArcLengthSpline(const PathToJson &path, std::shared_ptr<RobotModel> robot)
-:param_(Param(path.param_path)),robot_(robot)
+ArcLengthSpline::ArcLengthSpline(const PathToJson &path)
+:param_(Param(path.param_path))
 {
 }
 
@@ -310,22 +310,20 @@ double ArcLengthSpline::getLength() const
     return path_data_.s(path_data_.n_points-1);
 }
 
-double ArcLengthSpline::projectOnSpline(const State &x) const
+double ArcLengthSpline::projectOnSpline(const double &s, const Eigen::Vector3d ee_pos) const
 {
-    JointVector q = stateToJointVector(x);
-    Eigen::Vector3d pos = robot_->getEEPosition(q);
-    double s_guess = x.s;
+    double s_guess = s;
     Eigen::Vector3d pos_path = getPostion(s_guess);
 
     double s_opt = s_guess;
-    double dist = (pos-pos_path).norm();
+    double dist = (ee_pos-pos_path).norm();
 
     if (dist >= param_.max_dist_proj)
     {
         std::cout << "dist too large" << std::endl;
-        Eigen::ArrayXd diff_x_all = path_data_.X.array() - pos(0);
-        Eigen::ArrayXd diff_y_all = path_data_.Y.array() - pos(1);
-        Eigen::ArrayXd diff_z_all = path_data_.Z.array() - pos(2);
+        Eigen::ArrayXd diff_x_all = path_data_.X.array() - ee_pos(0);
+        Eigen::ArrayXd diff_y_all = path_data_.Y.array() - ee_pos(1);
+        Eigen::ArrayXd diff_z_all = path_data_.Z.array() - ee_pos(2);
         Eigen::ArrayXd dist_square = diff_x_all.square() + diff_y_all.square() + diff_z_all.square();
         std::vector<double> dist_square_vec(dist_square.data(),dist_square.data() + dist_square.size());
         auto min_iter = std::min_element(dist_square_vec.begin(),dist_square_vec.end());
@@ -340,7 +338,7 @@ double ArcLengthSpline::projectOnSpline(const State &x) const
         pos_path = getPostion(s_opt);
         Eigen::Vector3d ds_path = getDerivative(s_opt);
         Eigen::Vector3d dds_path = getSecondDerivative(s_opt);
-        Eigen::Vector3d diff = pos_path - pos;
+        Eigen::Vector3d diff = pos_path - ee_pos;
         double jac = 2.0 * diff(0) * ds_path(0) + 2.0 * diff(1) * ds_path(1) + 2.0 * diff(2) * ds_path(2);
         double hessian = 2.0 * ds_path(0) * ds_path(0) + 2.0 * diff(0) * dds_path(0) +
                          2.0 * ds_path(1) * ds_path(1) + 2.0 * diff(1) * dds_path(1) +

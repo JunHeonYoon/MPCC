@@ -41,21 +41,21 @@ namespace mpcc{
 /// @brief output of MPC
 /// @param u0 (Input) optimal control input
 /// @param mpc_horizon (std::array<OptVariables,N+1>) total horizon results (state and control input)
-/// @param time_total (double) time to run MPC
+/// @param compute_time (ComputeTime) time to run MPC
 struct MPCReturn {
     const Input u0;
     const std::array<OptVariables,N+1> mpc_horizon;
-    const double time_total;
+    const ComputeTime compute_time;
 };
 
 class MPC {
 public:
     MPC();
-    MPC(double Ts,const PathToJson &path,std::shared_ptr<RobotModel> robot, std::shared_ptr<SelCollNNmodel> selcolNN);
+    MPC(double Ts,const PathToJson &path);
 
     /// @brief run MPC by sqp given current state
     /// @param x0 (State) current state
-    /// @return (MPCReturn) log for MPC: optimal control input, total horizon results, time to run MPC
+    /// @return (MPCReturn) log for MPC; optimal control input, total horizon results, time to run MPC
     MPCReturn runMPC(State &x0);
 
     /// @brief set track given X-Y-Z-R path data
@@ -66,6 +66,8 @@ public:
     void setTrack(const Eigen::VectorXd &X, const Eigen::VectorXd &Y,const Eigen::VectorXd &Z,const std::vector<Eigen::Matrix3d> &R);
 
 
+    std::unique_ptr<RobotModel> robot_;
+    ArcLengthSpline track_;
 
 private:
     /// @brief unwrapping for initial variables which have phi(yaw) and arc length(s) 
@@ -83,7 +85,6 @@ private:
     std::array<OptVariables, N + 1> initial_guess_;
     const double Ts_;
     Integrator integrator_;
-    ArcLengthSpline track_;
     Param param_;
     std::unique_ptr<SolverInterface> solver_interface_;
 };

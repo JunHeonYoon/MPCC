@@ -26,22 +26,20 @@ using json = nlohmann::json;
 
 TEST(TestCost, TestSPD)
 {
-    std::ifstream iConfig("Params/config.json");
+    std::ifstream iConfig(mpcc::pkg_path + "Params/config.json");
     json jsonConfig;
     iConfig >> jsonConfig;
 
-    mpcc::PathToJson json_paths {jsonConfig["model_path"],
-                                 jsonConfig["cost_path"],
-                                 jsonConfig["bounds_path"],
-                                 jsonConfig["track_path"],
-                                 jsonConfig["normalization_path"]};
+    mpcc::PathToJson json_paths {mpcc::pkg_path + std::string(jsonConfig["model_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["cost_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["bounds_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["track_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["normalization_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["sqp_path"])};
     mpcc::Bounds bound = mpcc::Bounds(mpcc::BoundsParam(json_paths.bounds_path), mpcc::Param(json_paths.param_path));
-    mpcc::StateInputIndex si_index;
-    std::shared_ptr<mpcc::RobotModel> robot;
-    robot = std::make_shared<mpcc::RobotModel>();
-
     mpcc::Cost cost = mpcc::Cost(json_paths);
-    mpcc::ArcLengthSpline track = mpcc::ArcLengthSpline(json_paths, robot);
+    std::unique_ptr<mpcc::RobotModel> robot = std::make_unique<mpcc::RobotModel>();
+    mpcc::ArcLengthSpline track = mpcc::ArcLengthSpline(json_paths);
     genRoundTrack(track);
 
 
@@ -65,7 +63,7 @@ TEST(TestCost, TestSPD)
     mpcc::Input uk = mpcc::vectorToInput(uk_vec);
 
     mpcc::RobotData rbk;
-    rbk.update(xk_vec.head(PANDA_DOF),robot);
+    rbk.update(xk_vec.head(mpcc::PANDA_DOF),robot);
 
     // calculate cost matrix
     double temp_obj;
@@ -100,24 +98,22 @@ TEST(TestCost, TestSPD)
 
 TEST(TestCost, TestLinearization)
 {
-    std::ifstream iConfig("Params/config.json");
+    std::ifstream iConfig(mpcc::pkg_path + "Params/config.json");
     json jsonConfig;
     iConfig >> jsonConfig;
 
-    mpcc::PathToJson json_paths {jsonConfig["model_path"],
-                                 jsonConfig["cost_path"],
-                                 jsonConfig["bounds_path"],
-                                 jsonConfig["track_path"],
-                                 jsonConfig["normalization_path"]};
+    mpcc::PathToJson json_paths {mpcc::pkg_path + std::string(jsonConfig["model_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["cost_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["bounds_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["track_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["normalization_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["sqp_path"])};
     mpcc::Bounds bound = mpcc::Bounds(mpcc::BoundsParam(json_paths.bounds_path), mpcc::Param(json_paths.param_path));
-    mpcc::StateInputIndex si_index;
-    std::shared_ptr<mpcc::RobotModel> robot;
-    robot = std::make_shared<mpcc::RobotModel>();
-
+    std::unique_ptr<mpcc::RobotModel> robot = std::make_unique<mpcc::RobotModel>();
     mpcc::Cost cost = mpcc::Cost(json_paths);
     mpcc::CostParam cost_param = mpcc::CostParam(json_paths.cost_path);
     mpcc::Param param = mpcc::Param(json_paths.param_path);
-    mpcc::ArcLengthSpline track = mpcc::ArcLengthSpline(json_paths, robot);
+    mpcc::ArcLengthSpline track = mpcc::ArcLengthSpline(json_paths);
     genRoundTrack(track);
 
     mpcc::Bounds_x x_LB = bound.getBoundsLX();
@@ -147,8 +143,8 @@ TEST(TestCost, TestLinearization)
     mpcc::Input uk1 = mpcc::vectorToInput(uk1_vec);
 
     mpcc::RobotData rbk, rbk1;
-    rbk.update(xk_vec.head(PANDA_DOF),robot);
-    rbk1.update(xk1_vec.head(PANDA_DOF),robot);
+    rbk.update(xk_vec.head(mpcc::PANDA_DOF),robot);
+    rbk1.update(xk1_vec.head(mpcc::PANDA_DOF),robot);
 
     double obj, obj1;
     mpcc::CostGrad cost_grad;

@@ -24,6 +24,7 @@ Track::Track(std::string file)
     std::ifstream iTrack(file);
     json jsonTrack;
     iTrack >> jsonTrack;
+    
     // Model Parameters
     std::vector<double> x = jsonTrack["X"];
     X = Eigen::Map<Eigen::VectorXd>(x.data(), x.size());
@@ -31,6 +32,7 @@ Track::Track(std::string file)
     Y = Eigen::Map<Eigen::VectorXd>(y.data(), y.size());
     std::vector<double> z = jsonTrack["Z"];
     Z = Eigen::Map<Eigen::VectorXd>(z.data(), z.size());
+
 
     std::vector<double> quat_x = jsonTrack["quat_X"];
     std::vector<double> quat_y = jsonTrack["quat_Y"];

@@ -13,8 +13,8 @@ typedef std::chrono::duration<double, std::ratio<1> > second;
 TEST(TestSelfCollision, TestCalculateMLPOutput)
 {
     std::chrono::time_point<hd_clock> beg;
-    std::shared_ptr<mpcc::SelCollNNmodel> selcol;
-    selcol = std::make_shared<mpcc::SelCollNNmodel>();
+    std::unique_ptr<mpcc::SelCollNNmodel> selcol;
+    selcol = std::make_unique<mpcc::SelCollNNmodel>();
     mpcc::JointVector q0, dq, q1;
     q0 <<  0, 0, 0, -M_PI/2, 0,  M_PI/2,  M_PI/4;
     dq = mpcc::JointVector::Ones()*0.01;
@@ -24,7 +24,7 @@ TEST(TestSelfCollision, TestCalculateMLPOutput)
     {
         Eigen::Vector2d n_hidden;
         n_hidden << 128, 64;
-        selcol->setNeuralNetwork(PANDA_DOF, 1, n_hidden, true);
+        selcol->setNeuralNetwork(mpcc::PANDA_DOF, 1, n_hidden, true);
         beg = hd_clock::now();
         auto pred0 = selcol->calculateMlpOutput(q0, false);
         double min_dist0 = pred0.first.value();

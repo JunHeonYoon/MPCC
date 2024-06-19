@@ -23,18 +23,18 @@
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
-// int testIntegrator(const mpcc::PathToJson &path)
 TEST(TestIntegrator, TestIntegrator)
 {
-    std::ifstream iConfig("Params/config.json");
-    json jsonConfig;
-    iConfig >> jsonConfig;
+std::ifstream iConfig(mpcc::pkg_path + "Params/config.json");
+json jsonConfig;
+iConfig >> jsonConfig;
 
-    mpcc::PathToJson json_paths {jsonConfig["model_path"],
-                                 jsonConfig["cost_path"],
-                                 jsonConfig["bounds_path"],
-                                 jsonConfig["track_path"],
-                                 jsonConfig["normalization_path"]};
+mpcc::PathToJson json_paths {mpcc::pkg_path + std::string(jsonConfig["model_path"]),
+                             mpcc::pkg_path + std::string(jsonConfig["cost_path"]),
+                             mpcc::pkg_path + std::string(jsonConfig["bounds_path"]),
+                             mpcc::pkg_path + std::string(jsonConfig["track_path"]),
+                             mpcc::pkg_path + std::string(jsonConfig["normalization_path"]),
+                             mpcc::pkg_path + std::string(jsonConfig["sqp_path"])};
     double Ts = 0.02;
     const mpcc::Integrator integrator = mpcc::Integrator(Ts,json_paths);
 
@@ -76,17 +76,18 @@ TEST(TestIntegrator, TestIntegrator)
 
 TEST(TestIntegrator, TestLinModel)
 {
-    std::ifstream iConfig("Params/config.json");
+    // test Liniear model by comparing it to RK4
+    // 3 differnet test cases, hand picked, going straight and test how good linear model generalizes
+    std::ifstream iConfig(mpcc::pkg_path + "Params/config.json");
     json jsonConfig;
     iConfig >> jsonConfig;
 
-    mpcc::PathToJson json_paths {jsonConfig["model_path"],
-                                 jsonConfig["cost_path"],
-                                 jsonConfig["bounds_path"],
-                                 jsonConfig["track_path"],
-                                 jsonConfig["normalization_path"]};
-    // test Liniear model by comparing it to RK4
-    // 3 differnet test cases, hand picked, going straight and test how good linear model generalizes
+    mpcc::PathToJson json_paths {mpcc::pkg_path + std::string(jsonConfig["model_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["cost_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["bounds_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["track_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["normalization_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["sqp_path"])};
     double Ts = 0.02;
     const mpcc::Integrator integrator = mpcc::Integrator(0.02,json_paths);
     const mpcc::Model model = mpcc::Model(0.02,json_paths);

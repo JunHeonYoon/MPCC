@@ -35,7 +35,7 @@ struct RobotData
         d_manipul.setZero();
     }
 
-    void update(Eigen::Matrix<double,PANDA_DOF,1> q_input, std::shared_ptr<RobotModel> robot_model)
+    void update(Eigen::Matrix<double,PANDA_DOF,1> q_input, const std::unique_ptr<RobotModel> &robot_model)
     {
         q = q_input;
         EE_position = robot_model->getEEPosition(q);

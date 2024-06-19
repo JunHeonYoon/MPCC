@@ -48,17 +48,26 @@ struct FilterData
     // double gap_constr;
 };
 
+struct ComputeTime
+{
+    double set_qp;
+    double solve_qp;
+    double get_alpha;
+    double total;
+    void setZero(){set_qp=0; solve_qp=0;get_alpha=0;}
+};
+
 class OsqpInterface : public SolverInterface {
 public:
-    OsqpInterface(double Ts,const PathToJson &path,std::shared_ptr<RobotModel> robot, std::shared_ptr<SelCollNNmodel> selcolNN);
+    OsqpInterface(double Ts,const PathToJson &path);
     void setTrack(const ArcLengthSpline track);
     void setInitialGuess(const std::array<OptVariables,N+1> &initial_guess);
-    std::array<OptVariables,N+1> solveOCP(Status *status);
+    std::array<OptVariables,N+1> solveOCP(Status *status, ComputeTime *mpc_time);
     ~OsqpInterface(){ std::cout << "Deleting Osqp Interface" << std::endl;}
 
 private:
     ArcLengthSpline track_;
-    std::shared_ptr<RobotModel> robot_;
+    std::unique_ptr<RobotModel> robot_;
     Cost cost_;
     Model model_;
     Constraints constraints_;

@@ -1,6 +1,7 @@
 #ifndef MPCC_SELF_COLLISION_H
 #define MPCC_SELF_COLLISION_H
 
+#include <config.h>
 #include <iostream>
 #include <vector>
 #include <string>
@@ -44,7 +45,7 @@ namespace mpcc
         };
         
         public:
-            SelCollNNmodel(const std::string & file_path = "/home/yoonjunheon/git/MPCC/C++/Constraints/SelfCollision/NNmodel/parameter/");
+            SelCollNNmodel(const std::string & file_path = pkg_path + "Constraints/SelfCollision/NNmodel/parameter/");
             ~SelCollNNmodel();
             void setNeuralNetwork(int n_input, int n_output, Eigen::VectorXd n_hidden, bool is_nerf);
             std::pair<Eigen::VectorXd, Eigen::MatrixXd> calculateMlpOutput(Eigen::VectorXd input, bool time_verbose);

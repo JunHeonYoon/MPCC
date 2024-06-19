@@ -171,23 +171,20 @@ TEST(TestSpline, TestSplineRot)
 
 TEST(TestSpline, TestArcLengthSpline)
 {
-    std::ifstream iConfig("Params/config.json");
+    std::ifstream iConfig(mpcc::pkg_path + "Params/config.json");
     json jsonConfig;
     iConfig >> jsonConfig;
 
-    mpcc::PathToJson json_paths {jsonConfig["model_path"],
-                                 jsonConfig["cost_path"],
-                                 jsonConfig["bounds_path"],
-                                 jsonConfig["track_path"],
-                                 jsonConfig["normalization_path"]};
-
-    std::shared_ptr<mpcc::RobotModel> robot;
-    robot = std::make_shared<mpcc::RobotModel>();
+    mpcc::PathToJson json_paths {mpcc::pkg_path + std::string(jsonConfig["model_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["cost_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["bounds_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["track_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["normalization_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["sqp_path"])};
 
     // test 6-D arc length spline approach
     // given a circle with randomly distributed points
-
-    mpcc::ArcLengthSpline sixDspline = mpcc::ArcLengthSpline(json_paths,robot);
+    mpcc::ArcLengthSpline sixDspline = mpcc::ArcLengthSpline(json_paths);
 
     int NT = 50;    //number of "training" points
     int NV = 200;   //number of validation points points

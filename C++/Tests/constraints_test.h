@@ -56,35 +56,24 @@ void genRoundTrack(mpcc::ArcLengthSpline &track)
 
     // give points to arc length based 3-D curve fitting
     track.gen6DSpline(X,Y,Z,R);
-
-
-
 }
 
 TEST(TestConstraints, TestSelfCollision)
 {
-    std::ifstream iConfig("Params/config.json");
+    std::ifstream iConfig(mpcc::pkg_path + "Params/config.json");
     json jsonConfig;
     iConfig >> jsonConfig;
 
-    mpcc::PathToJson json_paths {jsonConfig["model_path"],
-                                 jsonConfig["cost_path"],
-                                 jsonConfig["bounds_path"],
-                                 jsonConfig["track_path"],
-                                 jsonConfig["normalization_path"]};
+    mpcc::PathToJson json_paths {mpcc::pkg_path + std::string(jsonConfig["model_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["cost_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["bounds_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["track_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["normalization_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["sqp_path"])};
     mpcc::Bounds bound = mpcc::Bounds(mpcc::BoundsParam(json_paths.bounds_path),mpcc::Param(json_paths.param_path));
-    mpcc::StateInputIndex si_index;
-    std::shared_ptr<mpcc::RobotModel> robot;
-    robot = std::make_shared<mpcc::RobotModel>();
-
-    std::shared_ptr<mpcc::SelCollNNmodel> selcol;
-    selcol = std::make_shared<mpcc::SelCollNNmodel>();
-    Eigen::Vector2d n_hidden;
-    n_hidden << 128, 64;
-    selcol->setNeuralNetwork(PANDA_DOF, 1, n_hidden, true);
-
-    mpcc::Constraints constraints = mpcc::Constraints(0.02,json_paths, selcol);
-    mpcc::ArcLengthSpline track = mpcc::ArcLengthSpline(json_paths,robot);
+    std::unique_ptr<mpcc::RobotModel> robot = std::make_unique<mpcc::RobotModel>();    
+    mpcc::Constraints constraints = mpcc::Constraints(0.02,json_paths);
+    mpcc::ArcLengthSpline track = mpcc::ArcLengthSpline(json_paths);
     mpcc::Model model = mpcc::Model(0.02, json_paths);
     mpcc::Param param = mpcc::Param(json_paths.param_path);
     
@@ -117,8 +106,8 @@ TEST(TestConstraints, TestSelfCollision)
     mpcc::Input uk1 = mpcc::vectorToInput(uk1_vec);
 
     mpcc::RobotData rbk, rbk1;
-    rbk.update(xk_vec.head(PANDA_DOF),robot);
-    rbk1.update(xk1_vec.head(PANDA_DOF),robot);
+    rbk.update(xk_vec.head(mpcc::PANDA_DOF),robot);
+    rbk1.update(xk1_vec.head(mpcc::PANDA_DOF),robot);
 
 
     mpcc::ConstraintsInfo constr_info, constr_info1;
@@ -128,17 +117,17 @@ TEST(TestConstraints, TestSelfCollision)
     constraints.getConstraints(xk1,uk1,rbk1,1,&constr_info1,NULL);
 
     // real inequality constraint on xk1, uk1
-    double r_l1 = constr_info1.c_lvec(si_index.con_selcol);
-    double r_x1 = constr_info1.c_vec(si_index.con_selcol);
-    double r_u1 = constr_info1.c_uvec(si_index.con_selcol);
+    double r_l1 = constr_info1.c_lvec(mpcc::si_index.con_selcol);
+    double r_x1 = constr_info1.c_vec(mpcc::si_index.con_selcol);
+    double r_u1 = constr_info1.c_uvec(mpcc::si_index.con_selcol);
 
     // Linearization inequality constriant on xk, uk
-    double l_l1 = constr_info.c_lvec(si_index.con_selcol);
-    double l_x1 = (jac_constr.c_x*d_xk_vec + jac_constr.c_u*d_uk_vec + constr_info.c_vec)(si_index.con_selcol);
-    double l_u1 = constr_info.c_uvec(si_index.con_selcol);
+    double l_l1 = constr_info.c_lvec(mpcc::si_index.con_selcol);
+    double l_x1 = (jac_constr.c_x*d_xk_vec + jac_constr.c_u*d_uk_vec + constr_info.c_vec)(mpcc::si_index.con_selcol);
+    double l_u1 = constr_info.c_uvec(mpcc::si_index.con_selcol);
 
-    std::cout<< "Self Collision inequality condotion"<<std::endl;
-    std::cout<< "real on X0: " << constr_info.c_lvec(si_index.con_selcol) << " < " << constr_info.c_vec(si_index.con_selcol) << " < " << constr_info.c_uvec(si_index.con_selcol) << std::endl;
+    std::cout<< "Self Collision inequality condition"<<std::endl;
+    std::cout<< "real on X0: " << constr_info.c_lvec(mpcc::si_index.con_selcol) << " < " << constr_info.c_vec(mpcc::si_index.con_selcol) << " < " << constr_info.c_uvec(mpcc::si_index.con_selcol) << std::endl;
     std::cout<< "real on X1: " << r_l1 << " < " << r_x1 << " < " << r_u1 << std::endl;
     std::cout<< "lin  on X1: " << l_l1 << " < " << l_x1 << " < " <<  l_u1 << std::endl;
     std::cout << "Error[%]: " << fabs((l_x1 - r_x1) / r_x1)*100 << std::endl;
@@ -148,28 +137,20 @@ TEST(TestConstraints, TestSelfCollision)
 
 TEST(TestConstraints, TestSingularity)
 {
-    std::ifstream iConfig("Params/config.json");
+    std::ifstream iConfig(mpcc::pkg_path +"Params/config.json");
     json jsonConfig;
     iConfig >> jsonConfig;
 
-    mpcc::PathToJson json_paths {jsonConfig["model_path"],
-                                 jsonConfig["cost_path"],
-                                 jsonConfig["bounds_path"],
-                                 jsonConfig["track_path"],
-                                 jsonConfig["normalization_path"]};
+    mpcc::PathToJson json_paths {mpcc::pkg_path + std::string(jsonConfig["model_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["cost_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["bounds_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["track_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["normalization_path"]),
+                                 mpcc::pkg_path + std::string(jsonConfig["sqp_path"])};
     mpcc::Bounds bound = mpcc::Bounds(mpcc::BoundsParam(json_paths.bounds_path), mpcc::Param(json_paths.param_path));
-    mpcc::StateInputIndex si_index;
-    std::shared_ptr<mpcc::RobotModel> robot;
-    robot = std::make_shared<mpcc::RobotModel>();
-
-    std::shared_ptr<mpcc::SelCollNNmodel> selcol;
-    selcol = std::make_shared<mpcc::SelCollNNmodel>();
-    Eigen::Vector2d n_hidden;
-    n_hidden << 128, 64;
-    selcol->setNeuralNetwork(PANDA_DOF, 1, n_hidden, true);
-
-    mpcc::Constraints constraints = mpcc::Constraints(0.02,json_paths, selcol);
-    mpcc::ArcLengthSpline track = mpcc::ArcLengthSpline(json_paths,robot);
+    std::unique_ptr<mpcc::RobotModel> robot = std::make_unique<mpcc::RobotModel>(); 
+    mpcc::Constraints constraints = mpcc::Constraints(0.02,json_paths);
+    mpcc::ArcLengthSpline track = mpcc::ArcLengthSpline(json_paths);
     mpcc::Model model = mpcc::Model(0.02, json_paths);
     mpcc::Param param = mpcc::Param(json_paths.param_path);
     
@@ -202,8 +183,8 @@ TEST(TestConstraints, TestSingularity)
     mpcc::Input uk1 = mpcc::vectorToInput(uk1_vec);
 
     mpcc::RobotData rbk, rbk1;
-    rbk.update(xk_vec.head(PANDA_DOF),robot);
-    rbk1.update(xk1_vec.head(PANDA_DOF),robot);
+    rbk.update(xk_vec.head(mpcc::PANDA_DOF),robot);
+    rbk1.update(xk1_vec.head(mpcc::PANDA_DOF),robot);
 
     bool result = false;
 
@@ -214,17 +195,17 @@ TEST(TestConstraints, TestSingularity)
     constraints.getConstraints(xk1,uk1,rbk1,1,&constr_info1,NULL);
 
     // real inequality constraint on xk1, uk1
-    double r_l1 = constr_info1.c_lvec(si_index.con_sing);
-    double r_x1 = constr_info1.c_vec(si_index.con_sing);
-    double r_u1 = constr_info1.c_uvec(si_index.con_sing);
+    double r_l1 = constr_info1.c_lvec(mpcc::si_index.con_sing);
+    double r_x1 = constr_info1.c_vec(mpcc::si_index.con_sing);
+    double r_u1 = constr_info1.c_uvec(mpcc::si_index.con_sing);
 
     // Linearization inequality constriant on xk, uk
-    double l_l1 = constr_info.c_lvec(si_index.con_sing);
-    double l_x1 = (jac_constr.c_x*d_xk_vec + jac_constr.c_u*d_uk_vec + constr_info.c_vec)(si_index.con_sing);
-    double l_u1 = constr_info.c_uvec(si_index.con_sing);
+    double l_l1 = constr_info.c_lvec(mpcc::si_index.con_sing);
+    double l_x1 = (jac_constr.c_x*d_xk_vec + jac_constr.c_u*d_uk_vec + constr_info.c_vec)(mpcc::si_index.con_sing);
+    double l_u1 = constr_info.c_uvec(mpcc::si_index.con_sing);
 
-    std::cout<< "Singularity inequality condotion"<<std::endl;
-    std::cout<< "real on X0: " << constr_info.c_lvec(si_index.con_sing) << " < " << constr_info.c_vec(si_index.con_sing) << " < " << constr_info.c_uvec(si_index.con_sing) << std::endl;
+    std::cout<< "Singularity inequality condition"<<std::endl;
+    std::cout<< "real on X0: " << constr_info.c_lvec(mpcc::si_index.con_sing) << " < " << constr_info.c_vec(mpcc::si_index.con_sing) << " < " << constr_info.c_uvec(mpcc::si_index.con_sing) << std::endl;
     std::cout<< "real on X1: " << r_l1 << " < " << r_x1 << " < " << r_u1 << std::endl;
     std::cout<< "lin  on X1: " << l_l1 << " < " << l_x1 << " < " << l_u1 << std::endl;
     std::cout << "Error[%]: " << fabs((l_x1 - r_x1) / r_x1)*100 << std::endl;

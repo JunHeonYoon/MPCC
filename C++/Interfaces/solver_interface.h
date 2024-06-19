@@ -24,10 +24,12 @@
 
 namespace mpcc{
 struct OptVariables;
+struct ComputeTime;
 enum Status
 { 
     SOLVED,    
-    MAX_ITER_EXCEEDED, 
+    MAX_ITER_EXCEEDED,
+    QP_INFISIBLE, 
     INVALID_SETTINGS 
 };
 
@@ -35,7 +37,7 @@ class SolverInterface {
     public:
         virtual void setTrack(const ArcLengthSpline track) = 0;
         virtual void setInitialGuess(const std::array<OptVariables,N+1> &initial_guess) = 0;
-        virtual std::array<OptVariables,N+1> solveOCP(Status *status) = 0;
+        virtual std::array<OptVariables,N+1> solveOCP(Status *status, ComputeTime *mpc_time) = 0;
         virtual ~SolverInterface(){std::cout << "Deleting Solver Interface" << std::endl;}
 };
 }

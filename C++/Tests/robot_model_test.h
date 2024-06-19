@@ -13,8 +13,8 @@ std::chrono::time_point<hd_clock> beg_;
 
 TEST(TestRobotModel, TestGetEEPosition)
 {
-    std::shared_ptr<mpcc::RobotModel> robot;
-    robot = std::make_shared<mpcc::RobotModel>();
+    std::unique_ptr<mpcc::RobotModel> robot;
+    robot = std::make_unique<mpcc::RobotModel>();
     mpcc::JointVector q0;
     q0 <<  -0.002, -0.001,  0.002, -1.574,  0.006,  1.584,  0.789;
     Vector3d x0 = Vector3d::Zero();
@@ -39,8 +39,8 @@ TEST(TestRobotModel, TestGetEEPosition)
 
 TEST(TestRobotModel, TestGetEEOrientation)
 {
-    std::shared_ptr<mpcc::RobotModel> robot;
-    robot = std::make_shared<mpcc::RobotModel>();
+    std::unique_ptr<mpcc::RobotModel> robot;
+    robot = std::make_unique<mpcc::RobotModel>();
     mpcc::JointVector q0;
     q0.setZero();
     q0 << 0, 0, 0, -M_PI/2, 0, M_PI/2, M_PI/4;
@@ -63,11 +63,11 @@ TEST(TestRobotModel, TestGetEEOrientation)
 
 TEST(TestRobotModel, TestGetJacobianv)
 {
-    std::shared_ptr<mpcc::RobotModel> robot;
-    robot = std::make_shared<mpcc::RobotModel>();
+    std::unique_ptr<mpcc::RobotModel> robot;
+    robot = std::make_unique<mpcc::RobotModel>();
     mpcc::JointVector q0;
     q0 <<  -0.002, -0.001,  0.002, -1.574,  0.006,  1.584,  0.789;
-    Matrix<double, 3, PANDA_DOF> J0;
+    Matrix<double, 3, mpcc::PANDA_DOF> J0;
     J0.setZero();
     bool result;
     try
@@ -91,14 +91,14 @@ TEST(TestRobotModel, TestGetJacobianv)
 
 TEST(TestRobotModel, TestManipulability)
 {
-    std::shared_ptr<mpcc::RobotModel> robot;
-    robot = std::make_shared<mpcc::RobotModel>();
+    std::unique_ptr<mpcc::RobotModel> robot;
+    robot = std::make_unique<mpcc::RobotModel>();
     mpcc::JointVector q0, dq, q1;
     q0 <<  0, 0, 0, 0.1, 0, M_PI/2, M_PI/4;
     dq = mpcc::JointVector::Ones()*0.01;
     q1 = q0 + dq;
     double mani0 = 0, mani1 = 0, mani_est = 0;
-    VectorXd d_mani = VectorXd::Zero(PANDA_DOF);
+    VectorXd d_mani = VectorXd::Zero(mpcc::PANDA_DOF);
     bool result;
     try
     {

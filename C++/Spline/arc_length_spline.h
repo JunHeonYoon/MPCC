@@ -58,7 +58,7 @@ struct PathData{
 class ArcLengthSpline {
 public:
     ArcLengthSpline();
-    ArcLengthSpline(const PathToJson &path, std::shared_ptr<RobotModel> robot);
+    ArcLengthSpline(const PathToJson &path);
 
     /// @brief  generate 6-D arc length parametrized spline given X-Y-Z position and orientation path data
     /// @param X (Eigen::VectorXd) X position data
@@ -74,7 +74,7 @@ public:
 
     /// @brief get Orientation data given arc length (s)
     /// @param s (double) arc length 
-    /// @return (Eigen::Vector3d) Orientation data
+    /// @return (Eigen::Matrix3d) Orientation data
     Eigen::Matrix3d getOrientation(double) const;
 
     /// @brief get X'(s)-Y'(s)-Z'(s) position data derivatived by arc length (s) given arc length (s)
@@ -97,11 +97,10 @@ public:
     double getLength() const;
 
     /// @brief compute arc length of projected on splined path which calculated by Newton-Euler method given current state
-    /// @param x (State) current state
+    /// @param s (double) current path parameter
+    /// @param ee_pos (Eigen::Vector3d) current position of End-Effector
     /// @return (double) projected arc lenth
-    double projectOnSpline(const State &x) const;
-
-    // void setParam(const Param &param) { param_ = param; };
+    double projectOnSpline(const double &s, const Eigen::Vector3d ee_pos) const;
 
 private:
     /// @brief set irregular path point data to make path data (PathData)
@@ -155,14 +154,12 @@ private:
     /// @return (double) unwrapped arc length (s) data
     double unwrapInput(double x) const;
 
-    PathData path_data_;      // initial data and data used for successive fitting
-//    PathData pathDataFinal; // final data
+    PathData path_data_;
     CubicSpline spline_x_;
     CubicSpline spline_y_;
     CubicSpline spline_z_;
     CubicSplineRot spline_r_;
     Param param_;
-    std::shared_ptr<RobotModel> robot_;
 };
 }
 #endif //MPCC_ARC_LENGTH_SPLINE_H

@@ -3,12 +3,6 @@
 /MPCC
 
 # CMake
-CMakeCache.txt
-CMakeFiles/
-Makefile
-cmake_install.cmake
-libMPCC_LIB.so
-MPCC
-TEST
+/build/
 
 .vscode

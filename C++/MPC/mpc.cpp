@@ -23,13 +23,14 @@ MPC::MPC()
     std::cout << "default constructor, not everything is initialized properly" << std::endl;
 }
 
-MPC::MPC(double Ts,const PathToJson &path,std::shared_ptr<RobotModel> robot, std::shared_ptr<SelCollNNmodel> selcolNN)
+MPC::MPC(double Ts,const PathToJson &path)
 :Ts_(Ts),
 valid_initial_guess_(false),
-solver_interface_(new OsqpInterface(Ts, path, robot, selcolNN)),
-track_(ArcLengthSpline(path,robot)),
+solver_interface_(new OsqpInterface(Ts, path)),
+track_(ArcLengthSpline(path)),
 param_(Param(path.param_path)),
-integrator_(Integrator(Ts,path))
+integrator_(Integrator(Ts,path)),
+robot_(new RobotModel())
 {
 }
 
@@ -72,22 +73,26 @@ void MPC::generateNewInitialGuess(const State &x0)
 
 MPCReturn MPC::runMPC(State &x0)
 {
-    auto t1 = std::chrono::high_resolution_clock::now();
-    int solver_status = -1;
-    double last_s = x0.s;
-    x0.s = track_.projectOnSpline(x0);
-    if(fabs(last_s - x0.s) > param_.max_dist_proj) valid_initial_guess_ = false;
+    // double last_s = x0.s;
+    // x0.s = track_.projectOnSpline(last_s, robot_->getEEPosition(stateToJointVector(x0)));
+    // if(fabs(last_s - x0.s) > param_.max_dist_proj) valid_initial_guess_ = false;
 
     if(valid_initial_guess_) updateInitialGuess(x0);
     else generateNewInitialGuess(x0);
 
     solver_interface_->setInitialGuess(initial_guess_);
-    Status sqp_status;
-    initial_guess_ = solver_interface_->solveOCP(&sqp_status);
 
-    auto t2 = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-    double time_nmpc = time_span.count();
+    Status sqp_status;
+    ComputeTime time_nmpc;
+
+    initial_guess_ = solver_interface_->solveOCP(&sqp_status, &time_nmpc);
+    if(sqp_status == MAX_ITER_EXCEEDED) valid_initial_guess_ = false;
+    else if(sqp_status == QP_INFISIBLE)
+    {
+        std::cout << "=========================================" << std::endl;
+        std::cout << "=========== QP did not solved ===========" << std::endl;
+        std::cout << "=========================================" << std::endl;
+    }
 
     return {initial_guess_[0].uk,initial_guess_,time_nmpc};
 }
@@ -96,6 +101,7 @@ void MPC::setTrack(const Eigen::VectorXd &X, const Eigen::VectorXd &Y,const Eige
 {
     track_.gen6DSpline(X,Y,Z,R);
     solver_interface_->setTrack(track_);
+    valid_initial_guess_ = false;
 }
 
 }

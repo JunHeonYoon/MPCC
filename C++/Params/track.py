@@ -4,7 +4,7 @@ from scipy.spatial.transform import Rotation as R
 
 # 8-shaped path with 0.2m radius (along YZ-axis)
 r = 0.2
-t = np.linspace(0, 1*pi, 100) + pi/2
+t = np.linspace(0, 2.5*pi, 100) + pi/2
 z = np.zeros(t.shape)
 y = r * np.sin(2 * t)
 x = r * np.sin(t)

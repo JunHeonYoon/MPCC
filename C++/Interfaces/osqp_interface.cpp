@@ -15,17 +15,18 @@
 ///////////////////////////////////////////////////////////////////////////
 
 #include "osqp_interface.h"
+#include <chrono>
 
 namespace mpcc{
-OsqpInterface::OsqpInterface(double Ts,const PathToJson &path,std::shared_ptr<RobotModel> robot, std::shared_ptr<SelCollNNmodel> selcolNN)
-:robot_(robot),
-cost_(Cost(path)),
+OsqpInterface::OsqpInterface(double Ts,const PathToJson &path)
+:cost_(Cost(path)),
 model_(Model(Ts,path)),
-constraints_(Constraints(Ts,path,selcolNN)),
+constraints_(Constraints(Ts,path)),
 bounds_(BoundsParam(path.bounds_path),Param(path.param_path)),
 normalization_param_(NormalizationParam(path.normalization_path)),
 sqp_param_(SQPParam(path.sqp_path))
 {   
+    robot_ = std::make_unique<RobotModel>();
 }
 
 void OsqpInterface::setTrack(const ArcLengthSpline track)
@@ -227,8 +228,10 @@ void OsqpInterface::setQP(const std::array<OptVariables,N+1> &initial_guess,
     setConstraints(initial_guess, jac_constr, constr, l, u);
 }
 
-std::array<OptVariables,N+1> OsqpInterface::solveOCP(Status *status)
+std::array<OptVariables,N+1> OsqpInterface::solveOCP(Status *status, ComputeTime *mpc_time)
 {
+    auto start_total = std::chrono::high_resolution_clock::now();
+
     // Initialize
     lambda_.setZero(N_constr);
     step_.setZero(N_var);
@@ -247,10 +250,15 @@ std::array<OptVariables,N+1> OsqpInterface::solveOCP(Status *status)
 
     filter_data_list_.clear();
 
+    mpc_time->setZero();
+
     // SQP itertion
     for(sqp_iter_=0; sqp_iter_<sqp_param_.max_iter; sqp_iter_++)
     {
-        std::cout <<"sqp_iter_: " <<sqp_iter_<<std::endl;
+        // std::cout <<"sqp_iter_: " <<sqp_iter_<<std::endl;
+
+        auto start_set_qp = std::chrono::high_resolution_clock::now();
+
         // QP formulation
         if(sqp_param_.use_BFGS)
         {
@@ -285,17 +293,48 @@ std::array<OptVariables,N+1> OsqpInterface::solveOCP(Status *status)
             std::cout << "Hessian is NaN\n";
         }
 
+        auto end_set_qp = std::chrono::high_resolution_clock::now();
+        auto start_solve_qp = std::chrono::high_resolution_clock::now();
+
         // solve QP to get step_ and step_lambda_
-        if(!solveQP(Hess_, grad_obj_, jac_constr_, l_-constr_, u_-constr_, step_, step_lambda_)) exit(0);
+        if(!solveQP(Hess_, grad_obj_, jac_constr_, l_-constr_, u_-constr_, step_, step_lambda_))
+        {
+            (*status) = QP_INFISIBLE;
+            std::array<OptVariables,N+1> zero_guess;
+            for(size_t i=0; i<N; i++)
+            {
+                zero_guess[i].xk = initial_guess_[0].xk;
+                zero_guess[i].uk.setZero();
+            }
+            return zero_guess;
+
+        }
         if(sqp_param_.do_SOC)
         {
-            if(!SecondOrderCorrection(initial_guess_,Hess_,grad_obj_,jac_constr_,step_,step_lambda_)) exit(0);
+            if(!SecondOrderCorrection(initial_guess_,Hess_,grad_obj_,jac_constr_,step_,step_lambda_))
+            {
+                (*status) = QP_INFISIBLE;
+                std::array<OptVariables,N+1> zero_guess;
+                for(size_t i=0; i<N; i++)
+                {
+                    zero_guess[i].xk = initial_guess_[0].xk;
+                    zero_guess[i].uk.setZero();
+                }
+                return zero_guess;
+
+            }
         }
+
+        auto end_solve_qp = std::chrono::high_resolution_clock::now();
+        auto start_get_alpha = std::chrono::high_resolution_clock::now();
+
         step_lambda_ -= lambda_;
 
         // double alpha = meritLineSearch(step_, Hess_, grad_obj_, obj_, constr_, l_, u_);
         double alpha = filterLineSearch(initial_guess_,step_,filter_data_list_);
-        std:cout << "\talpha: "<<alpha << std::endl;
+        // std:cout << "\talpha: "<<alpha << std::endl;
+
+        auto end_get_alpha = std::chrono::high_resolution_clock::now();
 
         // take step
         initial_guess_vec_ += alpha*deNormalizeStep(step_);
@@ -305,11 +344,15 @@ std::array<OptVariables,N+1> OsqpInterface::solveOCP(Status *status)
 
         // update step info
         step_prev_ = alpha * step_;
-        // primal_step_norm_ = alpha * step_.template lpNorm<Eigen::Infinity>();
-        primal_step_norm_ = (alpha * step_).norm();
+        primal_step_norm_ = alpha * step_.template lpNorm<Eigen::Infinity>();
+        // primal_step_norm_ = (alpha * step_).norm();
         dual_step_norm_ = alpha * step_lambda_.template lpNorm<Eigen::Infinity>();
-        std::cout << "\tprimal_step_norm_: " << primal_step_norm_ << std::endl;
-        std::cout << "\tdual_step_norm_: " << dual_step_norm_ << std::endl;
+        // std::cout << "\tprimal_step_norm_: " << primal_step_norm_ << std::endl;
+        // std::cout << "\tdual_step_norm_: " << dual_step_norm_ << std::endl;
+
+        mpc_time->set_qp += std::chrono::duration_cast<std::chrono::duration<double>>(end_set_qp - start_set_qp).count();
+        mpc_time->solve_qp += std::chrono::duration_cast<std::chrono::duration<double>>(end_solve_qp - start_solve_qp).count();
+        mpc_time->get_alpha += std::chrono::duration_cast<std::chrono::duration<double>>(end_get_alpha - start_get_alpha).count();
 
         // termination condition
         // TODO: critertion about constraint
@@ -320,7 +363,10 @@ std::array<OptVariables,N+1> OsqpInterface::solveOCP(Status *status)
             break;
         }
     }
-    (*status) = MAX_ITER_EXCEEDED;
+    if(sqp_iter_ == sqp_param_.max_iter) (*status) = MAX_ITER_EXCEEDED;
+
+    auto end_total = std::chrono::high_resolution_clock::now();
+    mpc_time->total = std::chrono::duration_cast<std::chrono::duration<double>>(end_total - start_total).count();
 
     return initial_guess_;
 }
@@ -358,7 +404,7 @@ bool OsqpInterface::solveQP(const Eigen::MatrixXd &P, const Eigen::VectorXd &q, 
     solver_.settings()->setWarmStart(false);
     solver_.settings()->getSettings()->eps_abs = 1e-4;
     solver_.settings()->getSettings()->eps_rel = 1e-5;
-    solver_.settings()->getSettings()->verbose =  false;
+    solver_.settings()->getSettings()->verbose = false;
 
     // set the initial data of the QP solver
     solver_.data()->setNumberOfVariables(N_var);

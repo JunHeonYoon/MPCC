@@ -1,7 +1,7 @@
 
 {
   "n_reset": 3,
-  "n_sim": 1000,
+  "n_sim": 10000,
   "Ts": 0.01,
   
   "model_path": "Params/model.json",
