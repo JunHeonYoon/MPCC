@@ -51,7 +51,6 @@ int main() {
     MPC mpc(jsonConfig["Ts"],json_paths);
 
     State x0 = {0., 0., 0., -M_PI/2, 0, M_PI/2, M_PI/4,
-                0., 0., 0., 0., 0., 0., 0., 
                 0., 0.};
     Eigen::Vector3d ee_pos = robot.getEEPosition(stateToJointVector(x0));
     Eigen::Matrix3d ee_ori = robot.getEEOrientation(stateToJointVector(x0));
@@ -63,10 +62,12 @@ int main() {
 
     Eigen::Vector3d end_point;
     Eigen::Matrix3d end_ori;
+    double end_s;
     end_point(0) = track_xyzr.X(track_xyzr.X.size() - 1); 
     end_point(1) = track_xyzr.Y(track_xyzr.Y.size() - 1);
     end_point(2) = track_xyzr.Z(track_xyzr.Z.size() - 1);
     end_ori = track_xyzr.R[track_xyzr.R.size() - 1];
+    end_s = mpc.track_.getLength();
     std::cout<<"end posi: "<<end_point.transpose()<<std::endl;
 
     ofstream debug_file;
@@ -92,15 +93,27 @@ int main() {
     std::cout << "R error         :";
     std::cout << std::fixed << std::setprecision(6) << getInverseSkewVector(LogMatrix(end_ori.transpose()*ee_ori)).transpose() << std::endl;
     std::cout << "==============================================================="<<std::endl;
-    debug_file << stateToJointVector(x0).transpose() << " " 
-               << (selcolNN.calculateMlpOutput(stateToJointVector(x0),false)).first << " " 
-               << robot.getManipulability(stateToJointVector(x0)) << " " 
-               << std::endl;
+    // debug_file << stateToJointVector(x0).transpose() << " " 
+    //            << (selcolNN.calculateMlpOutput(stateToJointVector(x0),false)).first << " " 
+    //            << robot.getManipulability(stateToJointVector(x0)) << " " 
+    //            << std::endl;
 
     for(int i = 0; i < jsonConfig["n_sim"]; i++)
     {
         MPCReturn mpc_sol = mpc.runMPC(x0);
-        x0 = integrator.simTimeStep(x0,mpc_sol.u0,jsonConfig["Ts"]);
+        // // add disturbance env
+        // if(i > 300 && i <350)
+        // {
+        //     Input disturbance_input;
+        //     disturbance_input.setZero();
+        //     disturbance_input
+        //     disturbance_input.dVs = mpc_sol.u0.dVs;
+        //     x0 = integrator.simTimeStep(x0,disturbance_input,jsonConfig["Ts"]);
+        // }
+        // else
+        // {
+            x0 = integrator.simTimeStep(x0,mpc_sol.u0,jsonConfig["Ts"]);
+        // }
         ee_pos = robot.getEEPosition(stateToJointVector(x0));
         ee_ori = robot.getEEOrientation(stateToJointVector(x0));
 
@@ -109,12 +122,12 @@ int main() {
         std::cout << "q now           :\t";
         std::cout << std::fixed << std::setprecision(6) << stateToJointVector(x0).transpose() << std::endl;
         std::cout << "q_dot now       :\t";
-        std::cout << std::fixed << std::setprecision(6) << stateTodJointVector(x0).transpose()  << std::endl;
+        std::cout << std::fixed << std::setprecision(6) << inputTodJointVector(mpc_sol.u0).transpose()  << std::endl;
         std::cout << "x               :\t";
         std::cout << std::fixed << std::setprecision(6) << ee_pos.transpose() << std::endl;
         std::cout << "x_dot           :\t";
-        std::cout << std::fixed << std::setprecision(6) << (robot.getJacobianv(stateToJointVector(x0))*stateTodJointVector(x0)).transpose() << std::endl;
-        std::cout << std::fixed << std::setprecision(6) << (robot.getJacobianv(stateToJointVector(x0))*stateTodJointVector(x0)).norm() << std::endl;
+        std::cout << std::fixed << std::setprecision(6) << (robot.getJacobianv(stateToJointVector(x0))*inputTodJointVector(mpc_sol.u0)).transpose() << std::endl;
+        std::cout << std::fixed << std::setprecision(6) << (robot.getJacobianv(stateToJointVector(x0))*inputTodJointVector(mpc_sol.u0)).norm() << std::endl;
         std::cout << "R               :" << std::endl;
         std::cout << std::fixed << std::setprecision(6) << ee_ori << std::endl;
         std::cout << "manipulability  :\t";
@@ -137,11 +150,23 @@ int main() {
         
         debug_file << stateToJointVector(x0).transpose() << " " 
                    << (selcolNN.calculateMlpOutput(stateToJointVector(x0),false)).first << " "
-                   << robot.getManipulability(stateToJointVector(x0)) << " "
-                   << std::endl;
+                   << robot.getManipulability(stateToJointVector(x0)) << " ";
+                //    << std::endl;
+        for(size_t j=0;j<N; j++)
+        {
+            auto pred_ee_pos = robot.getEEPosition(stateToJointVector(mpc_sol.mpc_horizon[j].xk));
+            debug_file << pred_ee_pos.transpose() << " ";
+        }
+        for(size_t j=0;j<N; j++)
+        {
+            auto ref_ee_pos = mpc.track_.getPostion(mpc_sol.mpc_horizon[j].xk.s);
+            debug_file << ref_ee_pos.transpose() << " ";
+        }
+        debug_file << "\n";
+
         log.push_back(mpc_sol);
 
-        if((end_point - ee_pos).norm() < 1e-2 && (getInverseSkewVector(LogMatrix(end_ori.transpose()*ee_ori))).norm() < 1e-3 && x0.s > 0.1)
+        if((end_point - ee_pos).norm() < 1e-2 && (getInverseSkewVector(LogMatrix(end_ori.transpose()*ee_ori))).norm() < 1e-3 && fabs(x0.s - end_s) < 1e-2)
         {
             std::cout << "End point reached!!!"<< std::endl;
             break;

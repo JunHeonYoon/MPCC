@@ -24,56 +24,42 @@ Bounds::Bounds()
 Bounds::Bounds(BoundsParam bounds_param,Param param):
 param_(param)
 {
-    l_bounds_x_(0) = bounds_param.lower_state_bounds.q1_l;
-    l_bounds_x_(1) = bounds_param.lower_state_bounds.q2_l;
-    l_bounds_x_(2) = bounds_param.lower_state_bounds.q3_l;
-    l_bounds_x_(3) = bounds_param.lower_state_bounds.q4_l;
-    l_bounds_x_(4) = bounds_param.lower_state_bounds.q5_l;
-    l_bounds_x_(5) = bounds_param.lower_state_bounds.q6_l;
-    l_bounds_x_(6) = bounds_param.lower_state_bounds.q7_l;
-    l_bounds_x_(7) = bounds_param.lower_state_bounds.dq1_l;
-    l_bounds_x_(8) = bounds_param.lower_state_bounds.dq2_l;
-    l_bounds_x_(9) = bounds_param.lower_state_bounds.dq3_l;
-    l_bounds_x_(10) = bounds_param.lower_state_bounds.dq4_l;
-    l_bounds_x_(11) = bounds_param.lower_state_bounds.dq5_l;
-    l_bounds_x_(12) = bounds_param.lower_state_bounds.dq6_l;
-    l_bounds_x_(13) = bounds_param.lower_state_bounds.dq7_l;
-    l_bounds_x_(14) = bounds_param.lower_state_bounds.s_l;
-    l_bounds_x_(15) = bounds_param.lower_state_bounds.vs_l;
+    l_bounds_x_(0) = 1.1*bounds_param.lower_state_bounds.q1_l;
+    l_bounds_x_(1) = 1.1*bounds_param.lower_state_bounds.q2_l;
+    l_bounds_x_(2) = 1.1*bounds_param.lower_state_bounds.q3_l;
+    l_bounds_x_(3) = 1.1*bounds_param.lower_state_bounds.q4_l;
+    l_bounds_x_(4) = 1.1*bounds_param.lower_state_bounds.q5_l;
+    l_bounds_x_(5) = 1.1*bounds_param.lower_state_bounds.q6_l;
+    l_bounds_x_(6) = 1.1*bounds_param.lower_state_bounds.q7_l;
+    l_bounds_x_(7) = bounds_param.lower_state_bounds.s_l;
+    l_bounds_x_(8) = bounds_param.lower_state_bounds.vs_l;
 
-    u_bounds_x_(0) = bounds_param.upper_state_bounds.q1_u;
-    u_bounds_x_(1) = bounds_param.upper_state_bounds.q2_u;
-    u_bounds_x_(2) = bounds_param.upper_state_bounds.q3_u;
-    u_bounds_x_(3) = bounds_param.upper_state_bounds.q4_u;
-    u_bounds_x_(4) = bounds_param.upper_state_bounds.q5_u;
-    u_bounds_x_(5) = bounds_param.upper_state_bounds.q6_u;
-    u_bounds_x_(6) = bounds_param.upper_state_bounds.q7_u;
-    u_bounds_x_(7) = bounds_param.upper_state_bounds.dq1_u;
-    u_bounds_x_(8) = bounds_param.upper_state_bounds.dq2_u;
-    u_bounds_x_(9) = bounds_param.upper_state_bounds.dq3_u;
-    u_bounds_x_(10) = bounds_param.upper_state_bounds.dq4_u;
-    u_bounds_x_(11) = bounds_param.upper_state_bounds.dq5_u;
-    u_bounds_x_(12) = bounds_param.upper_state_bounds.dq6_u;
-    u_bounds_x_(13) = bounds_param.upper_state_bounds.dq7_u;
-    u_bounds_x_(14) = bounds_param.upper_state_bounds.s_u;
-    u_bounds_x_(15) = bounds_param.upper_state_bounds.vs_u;
+    u_bounds_x_(0) = 1.1*bounds_param.upper_state_bounds.q1_u;
+    u_bounds_x_(1) = 1.1*bounds_param.upper_state_bounds.q2_u;
+    u_bounds_x_(2) = 1.1*bounds_param.upper_state_bounds.q3_u;
+    u_bounds_x_(3) = 1.1*bounds_param.upper_state_bounds.q4_u;
+    u_bounds_x_(4) = 1.1*bounds_param.upper_state_bounds.q5_u;
+    u_bounds_x_(5) = 1.1*bounds_param.upper_state_bounds.q6_u;
+    u_bounds_x_(6) = 1.1*bounds_param.upper_state_bounds.q7_u;
+    u_bounds_x_(7) = bounds_param.upper_state_bounds.s_u;
+    u_bounds_x_(8) = bounds_param.upper_state_bounds.vs_u;
 
-    l_bounds_u_(0) = bounds_param.lower_input_bounds.ddq1_l;
-    l_bounds_u_(1) = bounds_param.lower_input_bounds.ddq2_l;
-    l_bounds_u_(2) = bounds_param.lower_input_bounds.ddq3_l;
-    l_bounds_u_(3) = bounds_param.lower_input_bounds.ddq4_l;
-    l_bounds_u_(4) = bounds_param.lower_input_bounds.ddq5_l;
-    l_bounds_u_(5) = bounds_param.lower_input_bounds.ddq6_l;
-    l_bounds_u_(6) = bounds_param.lower_input_bounds.ddq7_l;
+    l_bounds_u_(0) = bounds_param.lower_input_bounds.dq1_l;
+    l_bounds_u_(1) = bounds_param.lower_input_bounds.dq2_l;
+    l_bounds_u_(2) = bounds_param.lower_input_bounds.dq3_l;
+    l_bounds_u_(3) = bounds_param.lower_input_bounds.dq4_l;
+    l_bounds_u_(4) = bounds_param.lower_input_bounds.dq5_l;
+    l_bounds_u_(5) = bounds_param.lower_input_bounds.dq6_l;
+    l_bounds_u_(6) = bounds_param.lower_input_bounds.dq7_l;
     l_bounds_u_(7) = bounds_param.lower_input_bounds.dVs_l;
 
-    u_bounds_u_(0) = bounds_param.upper_input_bounds.ddq1_u;
-    u_bounds_u_(1) = bounds_param.upper_input_bounds.ddq2_u;
-    u_bounds_u_(2) = bounds_param.upper_input_bounds.ddq3_u;
-    u_bounds_u_(3) = bounds_param.upper_input_bounds.ddq4_u;
-    u_bounds_u_(4) = bounds_param.upper_input_bounds.ddq5_u;
-    u_bounds_u_(5) = bounds_param.upper_input_bounds.ddq6_u;
-    u_bounds_u_(6) = bounds_param.upper_input_bounds.ddq7_u;
+    u_bounds_u_(0) = bounds_param.upper_input_bounds.dq1_u;
+    u_bounds_u_(1) = bounds_param.upper_input_bounds.dq2_u;
+    u_bounds_u_(2) = bounds_param.upper_input_bounds.dq3_u;
+    u_bounds_u_(3) = bounds_param.upper_input_bounds.dq4_u;
+    u_bounds_u_(4) = bounds_param.upper_input_bounds.dq5_u;
+    u_bounds_u_(5) = bounds_param.upper_input_bounds.dq6_u;
+    u_bounds_u_(6) = bounds_param.upper_input_bounds.dq7_u;
     u_bounds_u_(7) = bounds_param.upper_input_bounds.dVs_u;
 
 

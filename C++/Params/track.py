@@ -2,28 +2,32 @@ from math import pi
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-# 8-shaped path with 0.2m radius (along YZ-axis)
-r = 0.2
-t = np.linspace(0, 2.5*pi, 100) + pi/2
-z = np.zeros(t.shape)
-y = r * np.sin(2 * t)
-x = r * np.sin(t)
+t1 = np.linspace(0, 1.0, 100)
+t2 = np.linspace(0, 1.0, 100)
+t3 = np.linspace(0, 1.0, 100)
 
-# x = r * np.sin(t)
-# y = r * np.sin(2 * t)
-# z = r * np.cos(t)
+x = -0.52*t1
+y = 0*t1
+z = 0*t1
+
+x = np.concatenate([x, x[-1] + 0*t2],axis=0)
+y = np.concatenate([y, y[-1] + 0*t2],axis=0)
+z = np.concatenate([z, z[-1] -0.18*t2],axis=0)
+
+x = np.concatenate([x, x[-1] + 0.52*t3],axis=0)
+y = np.concatenate([y, y[-1] + 0*t3],axis=0)
+z = np.concatenate([z, z[-1] + 0*t3],axis=0)
 
 
-# stayy initial orientation
+
+# stay initial orientation
 rot = R.from_matrix([[1,  0,  0],
                      [0, -1, 0],
                      [0,  0, -1]])
 
 
-
-
 quat = rot.as_quat()
-quat_list = np.tile(quat, (t.size, 1))
+quat_list = np.tile(quat, (x.size, 1))
 
 total_desc = f""" 
 {{

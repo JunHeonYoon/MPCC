@@ -299,6 +299,8 @@ std::array<OptVariables,N+1> OsqpInterface::solveOCP(Status *status, ComputeTime
         // solve QP to get step_ and step_lambda_
         if(!solveQP(Hess_, grad_obj_, jac_constr_, l_-constr_, u_-constr_, step_, step_lambda_))
         {
+            // printOptVar( initial_guess_);
+            // exit(0);
             (*status) = QP_INFISIBLE;
             std::array<OptVariables,N+1> zero_guess;
             for(size_t i=0; i<N; i++)
@@ -306,8 +308,8 @@ std::array<OptVariables,N+1> OsqpInterface::solveOCP(Status *status, ComputeTime
                 zero_guess[i].xk = initial_guess_[0].xk;
                 zero_guess[i].uk.setZero();
             }
-            return zero_guess;
-
+            initial_guess_ = zero_guess;
+            break;
         }
         if(sqp_param_.do_SOC)
         {
@@ -320,8 +322,8 @@ std::array<OptVariables,N+1> OsqpInterface::solveOCP(Status *status, ComputeTime
                     zero_guess[i].xk = initial_guess_[0].xk;
                     zero_guess[i].uk.setZero();
                 }
-                return zero_guess;
-
+                initial_guess_ = zero_guess;
+                break;
             }
         }
 
@@ -648,12 +650,17 @@ void OsqpInterface::printOptVar(std::array<OptVariables,N+1> opt_var)
 {
     for(size_t i=0;i<=N;i++)
     {
-        std::cout << "State[" << i << "]: " << stateToVector(opt_var[i].xk).transpose() << std::endl;; 
+        std::cout << "State[" << i << "]: " << std::endl;; 
+        std::cout << "\tq    : " << stateToJointVector(opt_var[i].xk).transpose() << std::endl;
+        std::cout << "\ts    : " << opt_var[i].xk.s << std::endl;
+        std::cout << "\ts dot: " << opt_var[i].xk.vs << std::endl;
     }
     std::cout <<" \n";
     for(size_t i=0;i<N;i++)
     {
-        std::cout << "Input[" << i << "]: " << inputToVector(opt_var[i].uk).transpose() << std::endl;; 
+        std::cout << "Input[" << i << "]: " << std::endl;; 
+        std::cout << "\tqdot: " << inputTodJointVector(opt_var[i].uk).transpose() << std::endl;; 
+        std::cout << "\tdVs  : " << opt_var[i].uk.dVs << std::endl;; 
     }
 }
 }
