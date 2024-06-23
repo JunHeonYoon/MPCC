@@ -124,22 +124,22 @@ def main():
     pred_ee_posi_set = dataset[:, 9:9+(3*N)]
     ref_ee_posi_set = dataset[:, 9+(3*N):9+2*(3*N)]
 
-    # Animated plotter
-    plt.ion()
-    fig, (selcol_ax, mani_ax) = plt.subplots(2, 1, figsize=(12, 8))
+    # # Animated plotter
+    # plt.ion()
+    # fig, (selcol_ax, mani_ax) = plt.subplots(2, 1, figsize=(12, 8))
 
-    min_dist_true_line, = selcol_ax.plot([],[], label='ans', color="blue", linewidth=4.0, linestyle='--')
-    min_dist_pred_line, = selcol_ax.plot([],[], label='pred', color = "red", linewidth=2.0)
-    selcol_ax.legend()
-    selcol_ax.set_ylim([min(np.min(pred_min_dist_set), SLECOL_BUFFER) - 0.5, np.max(pred_min_dist_set) + 0.5])
-    selcol_ax.grid()
+    # min_dist_true_line, = selcol_ax.plot([],[], label='ans', color="blue", linewidth=4.0, linestyle='--')
+    # min_dist_pred_line, = selcol_ax.plot([],[], label='pred', color = "red", linewidth=2.0)
+    # selcol_ax.legend()
+    # selcol_ax.set_ylim([min(np.min(pred_min_dist_set), SLECOL_BUFFER) - 0.5, np.max(pred_min_dist_set) + 0.5])
+    # selcol_ax.grid()
 
 
-    # Second subplot
-    mani_line, = mani_ax.plot([], [], label='mani', color="red", linewidth=2.0)
-    mani_ax.legend()
-    mani_ax.set_ylim([min(np.min(mani_set), MANI_BUFFER) - 0.05, np.max(mani_set) + 0.05])
-    mani_ax.grid()
+    # # Second subplot
+    # mani_line, = mani_ax.plot([], [], label='mani', color="red", linewidth=2.0)
+    # mani_ax.legend()
+    # mani_ax.set_ylim([min(np.min(mani_set), MANI_BUFFER) - 0.05, np.max(mani_set) + 0.05])
+    # mani_ax.grid()
 
 
 
@@ -151,11 +151,7 @@ def main():
         track_data = json.load(f)
     
     global_path_msg = create_path_message(track_data)
-
-
-
     
-
     time_data = np.zeros((1))
     min_dist_real_data = np.zeros((1))
     min_dist_pred_data = np.zeros((1))
@@ -171,8 +167,8 @@ def main():
         min_dist_pred_data = np.append(min_dist_pred_data, np.array([pred_min_dist_set[iter]]), axis=0)
         mani_data = np.append(mani_data, np.array([mani_set[iter]]), axis=0)
 
-        plt_func(fig, selcol_ax, mani_ax, min_dist_true_line, min_dist_pred_line, mani_line, time_data, min_dist_real_data, min_dist_pred_data, mani_data)
-        # plt.pause(0.01)
+        # plt_func(fig, selcol_ax, mani_ax, min_dist_true_line, min_dist_pred_line, mani_line, time_data, min_dist_real_data, min_dist_pred_data, mani_data)
+        plt.pause(0.01)
         
         local_path_msg = create_pred_path_message(pred_ee_posi_set[iter,:])
         ref_local_path_msg = create_pred_path_message(ref_ee_posi_set[iter,:])
@@ -180,7 +176,7 @@ def main():
         local_path_pub.publish(local_path_msg)
         ref_local_path_pub.publish(ref_local_path_msg)
 
-    plt.show()
+    # plt.show()
 
 if __name__ == '__main__':
     main()

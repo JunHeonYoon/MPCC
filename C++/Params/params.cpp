@@ -62,6 +62,7 @@ CostParam::CostParam(std::string file){
     q_ori = jsonCost["qOri"];
 
     r_dq = jsonCost["rdq"];
+    r_Vee = jsonCost["rVee"];
     r_dVs = jsonCost["rdVs"];
 }
 

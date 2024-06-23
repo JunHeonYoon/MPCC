@@ -73,47 +73,10 @@ int main() {
     ofstream debug_file;
     debug_file.open("debug.txt");
 
-    std::cout << "============================ Init ============================"<<std::endl;
-    std::cout << "q now           :\t";
-    std::cout << std::fixed << std::setprecision(6) << stateToJointVector(x0).transpose() << std::endl;
-    std::cout << "x               :\t";
-    std::cout << std::fixed << std::setprecision(6) << ee_pos.transpose() << std::endl;
-    std::cout << "R               :" << std::endl;
-    std::cout << std::fixed << std::setprecision(6) << ee_ori << std::endl;
-    std::cout << "manipulability  :\t";
-    std::cout << std::fixed << std::setprecision(6) << robot.getManipulability(stateToJointVector(x0)) << std::endl;
-    std::cout << "min distance[cm]:\t";
-    std::cout << std::fixed << std::setprecision(6) << (selcolNN.calculateMlpOutput(stateToJointVector(x0),false)).first << std::endl;
-    std::cout << "s               :";
-    std::cout << std::fixed << std::setprecision(6) << x0.s << std::endl;
-    std::cout << "vs              :";
-    std::cout << std::fixed << std::setprecision(6) << x0.vs << std::endl;
-    std::cout << "x_error         :";
-    std::cout << std::fixed << std::setprecision(6) << (end_point - ee_pos).transpose() << std::endl;
-    std::cout << "R error         :";
-    std::cout << std::fixed << std::setprecision(6) << getInverseSkewVector(LogMatrix(end_ori.transpose()*ee_ori)).transpose() << std::endl;
-    std::cout << "==============================================================="<<std::endl;
-    // debug_file << stateToJointVector(x0).transpose() << " " 
-    //            << (selcolNN.calculateMlpOutput(stateToJointVector(x0),false)).first << " " 
-    //            << robot.getManipulability(stateToJointVector(x0)) << " " 
-    //            << std::endl;
-
     for(int i = 0; i < jsonConfig["n_sim"]; i++)
     {
         MPCReturn mpc_sol = mpc.runMPC(x0);
-        // // add disturbance env
-        // if(i > 300 && i <350)
-        // {
-        //     Input disturbance_input;
-        //     disturbance_input.setZero();
-        //     disturbance_input
-        //     disturbance_input.dVs = mpc_sol.u0.dVs;
-        //     x0 = integrator.simTimeStep(x0,disturbance_input,jsonConfig["Ts"]);
-        // }
-        // else
-        // {
-            x0 = integrator.simTimeStep(x0,mpc_sol.u0,jsonConfig["Ts"]);
-        // }
+        x0 = integrator.simTimeStep(x0,mpc_sol.u0,jsonConfig["Ts"]);
         ee_pos = robot.getEEPosition(stateToJointVector(x0));
         ee_ori = robot.getEEOrientation(stateToJointVector(x0));
 

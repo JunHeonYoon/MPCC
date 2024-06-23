@@ -2,32 +2,36 @@ from math import pi
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-t1 = np.linspace(0, 1.0, 100)
-t2 = np.linspace(0, 1.0, 100)
-t3 = np.linspace(0, 1.0, 100)
+# For self collision experiment
+x = [0, 0,     -0.35, -0.35]
+y = [0, 0,     0,     0]
+z = [0, -0.35, -0.35, 0]
 
-x = -0.52*t1
-y = 0*t1
-z = 0*t1
-
-x = np.concatenate([x, x[-1] + 0*t2],axis=0)
-y = np.concatenate([y, y[-1] + 0*t2],axis=0)
-z = np.concatenate([z, z[-1] -0.18*t2],axis=0)
-
-x = np.concatenate([x, x[-1] + 0.52*t3],axis=0)
-y = np.concatenate([y, y[-1] + 0*t3],axis=0)
-z = np.concatenate([z, z[-1] + 0*t3],axis=0)
-
-
-
-# stay initial orientation
-rot = R.from_matrix([[1,  0,  0],
+rot1 = R.from_matrix([[1,  0,  0],
                      [0, -1, 0],
                      [0,  0, -1]])
 
+rot2 = R.from_matrix([[0,  0,  -1],
+                     [0, -1, 0],
+                     [-1,  0, 0]])
+quat1 = rot1.as_quat().reshape(1,-1)
+quat2 = rot2.as_quat().reshape(1,-1)
+quat_list = np.concatenate([quat1, quat1, quat2, quat2], axis=0)
 
-quat = rot.as_quat()
-quat_list = np.tile(quat, (x.size, 1))
+# For singularity experiment
+# r = 0.1
+# t = np.linspace(0, 2*pi, 100)
+
+# x = 2.35*r * np.sin(t)
+# y = 1.5*r * np.sin(2 * t)
+# z = 2.15*r * np.cos(t)
+
+
+# rot = R.from_matrix([[1,  0,  0],
+#                      [0, -1, 0],
+#                      [0,  0, -1]])
+# quat = rot.as_quat()
+# quat_list = np.tile(quat, (x.size, 1))
 
 total_desc = f""" 
 {{
