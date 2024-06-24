@@ -1,10 +1,9 @@
-from os import wait
-from tkinter import SEL
 import numpy as np
-from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
 from srmt.planning_scene import PlanningScene
 import json
+from time import time, sleep
+
 
 # ROS library
 import roslibpy
@@ -15,10 +14,10 @@ from std_msgs.msg import Header
 
 N = 10
 SLECOL_BUFFER = 1.0
-MANI_BUFFER = 0.01
+MANI_BUFFER = 0.03
 
 # Function to create a Path message from the track data
-def create_path_message(track_data):
+def create_path_message1(track_data):
     path = Path()
     path.header = Header()
     path.header.stamp = rospy.Time.now()
@@ -31,6 +30,31 @@ def create_path_message(track_data):
     for x, y, z, quat_x, quat_y, quat_z, quat_w in zip(track_data['X'], track_data['Y'], track_data['Z'], 
                                                        track_data['quat_X'], track_data['quat_Y'], 
                                                        track_data['quat_Z'], track_data['quat_W']):
+        pose = PoseStamped()
+        pose.header = path.header
+        pose.pose.position.x = x - initial_x + 0.55450 
+        pose.pose.position.y = y - initial_y + 0.
+        pose.pose.position.z = z - initial_z + 0.52110
+        pose.pose.orientation.x = quat_x
+        pose.pose.orientation.y = quat_y
+        pose.pose.orientation.z = quat_z
+        pose.pose.orientation.w = quat_w
+        path.poses.append(pose)
+    
+    return path
+
+def create_path_message2(track_data):
+    path = Path()
+    path.header = Header()
+    path.header.stamp = rospy.Time.now()
+    path.header.frame_id = 'panda_link0'
+
+    initial_x = track_data[0,0] - 0.
+    initial_y = track_data[0,1] - 0.
+    initial_z = track_data[0,2] - 0.
+
+    for x, y, z, quat_x, quat_y, quat_z, quat_w in zip(track_data[:,0], track_data[:,1], track_data[:,2],
+                                                       track_data[:,3], track_data[:,4], track_data[:,5], track_data[:,6]):
         pose = PoseStamped()
         pose.header = path.header
         pose.pose.position.x = x - initial_x + 0.55450 
@@ -76,11 +100,11 @@ def plt_func(fig, selcol_ax, mani_ax,
              time_data, min_dist_real_data, min_dist_pred_data, mani_data):
     if time_data.shape[0] > 10:
         time_data = time_data[-10:]
-        min_dist_real_data = min_dist_real_data[-10:]
+        # min_dist_real_data = min_dist_real_data[-10:]
         min_dist_pred_data = min_dist_pred_data[-10:]
         mani_data = mani_data[-10:]
 
-    min_dist_true_line.set_data(time_data, min_dist_real_data)
+    # min_dist_true_line.set_data(time_data, min_dist_real_data)
     min_dist_pred_line.set_data(time_data, min_dist_pred_data)
     mani_line.set_data(time_data, mani_data)
 
@@ -98,7 +122,8 @@ def plt_func(fig, selcol_ax, mani_ax,
     buffer_line_mani = mani_ax.hlines(y=MANI_BUFFER, xmin=x_min, xmax=x_max, label='buffer (mani)', color="black", linewidth=2.0)
 
     # Ensure all lines are included in the legend
-    lines_selcol = [min_dist_true_line, min_dist_pred_line, buffer_line_selcol]
+    # lines_selcol = [min_dist_true_line, min_dist_pred_line, buffer_line_selcol]
+    lines_selcol = [min_dist_pred_line, buffer_line_selcol]
     labels_selcol = [line.get_label() for line in lines_selcol]
     selcol_ax.legend(lines_selcol, labels_selcol)
 
@@ -124,40 +149,47 @@ def main():
     pred_ee_posi_set = dataset[:, 9:9+(3*N)]
     ref_ee_posi_set = dataset[:, 9+(3*N):9+2*(3*N)]
 
-    # # Animated plotter
-    # plt.ion()
-    # fig, (selcol_ax, mani_ax) = plt.subplots(2, 1, figsize=(12, 8))
+    # Animated plotter
+    plt.ion()
+    fig, (selcol_ax, mani_ax) = plt.subplots(2, 1, figsize=(12, 8))
 
-    # min_dist_true_line, = selcol_ax.plot([],[], label='ans', color="blue", linewidth=4.0, linestyle='--')
+    min_dist_true_line, = selcol_ax.plot([],[], label='ans', color="blue", linewidth=4.0, linestyle='--')
     # min_dist_pred_line, = selcol_ax.plot([],[], label='pred', color = "red", linewidth=2.0)
-    # selcol_ax.legend()
-    # selcol_ax.set_ylim([min(np.min(pred_min_dist_set), SLECOL_BUFFER) - 0.5, np.max(pred_min_dist_set) + 0.5])
-    # selcol_ax.grid()
+    min_dist_pred_line, = selcol_ax.plot([],[], label='min dist', color = "red", linewidth=2.0)
+    selcol_ax.legend()
+    selcol_ax.set_ylim([min(np.min(pred_min_dist_set), SLECOL_BUFFER) - 5, np.max(pred_min_dist_set) + 5])
+    selcol_ax.grid()
 
 
-    # # Second subplot
-    # mani_line, = mani_ax.plot([], [], label='mani', color="red", linewidth=2.0)
-    # mani_ax.legend()
-    # mani_ax.set_ylim([min(np.min(mani_set), MANI_BUFFER) - 0.05, np.max(mani_set) + 0.05])
-    # mani_ax.grid()
+    # Second subplot
+    mani_line, = mani_ax.plot([], [], label='mani', color="red", linewidth=2.0)
+    mani_ax.legend()
+    mani_ax.set_ylim([min(np.min(mani_set), MANI_BUFFER) - 0.05, np.max(mani_set) + 0.05])
+    mani_ax.grid()
 
 
 
     global_path_pub = rospy.Publisher('/mpcc/global_path', Path, queue_size=10)
+    splined_path_pub = rospy.Publisher('/mpcc/splined_path', Path, queue_size=10)
     local_path_pub = rospy.Publisher('/mpcc/local_path', Path, queue_size=10)
     ref_local_path_pub = rospy.Publisher('/mpcc/ref_local_path', Path, queue_size=10)
 
     with open('Params/track.json', 'r') as f:
         track_data = json.load(f)
     
-    global_path_msg = create_path_message(track_data)
+    global_path_msg = create_path_message1(track_data)
+
+    splined_path_set = np.loadtxt("build/splined_path.txt")
+    splined_path_msg = create_path_message2(splined_path_set)
     
     time_data = np.zeros((1))
     min_dist_real_data = np.zeros((1))
     min_dist_pred_data = np.zeros((1))
     mani_data = np.zeros((1))
+    sleep(5)
 
     for iter in range(q_set.shape[0]):
+        start = time()
         joint_state = q_set[iter,:]
         pc.display(joint_state)
         min_dist = pc.min_distance(joint_state)*100
@@ -167,16 +199,22 @@ def main():
         min_dist_pred_data = np.append(min_dist_pred_data, np.array([pred_min_dist_set[iter]]), axis=0)
         mani_data = np.append(mani_data, np.array([mani_set[iter]]), axis=0)
 
-        # plt_func(fig, selcol_ax, mani_ax, min_dist_true_line, min_dist_pred_line, mani_line, time_data, min_dist_real_data, min_dist_pred_data, mani_data)
-        plt.pause(0.01)
+        plt_func(fig, selcol_ax, mani_ax, min_dist_true_line, min_dist_pred_line, mani_line, time_data, min_dist_real_data, min_dist_pred_data, mani_data)
+        # plt.pause(0.01)
         
         local_path_msg = create_pred_path_message(pred_ee_posi_set[iter,:])
         ref_local_path_msg = create_pred_path_message(ref_ee_posi_set[iter,:])
         global_path_pub.publish(global_path_msg)
+        splined_path_pub.publish(splined_path_msg)
         local_path_pub.publish(local_path_msg)
         ref_local_path_pub.publish(ref_local_path_msg)
+        end = time()
+        elapsed = end - start
+        if elapsed < 0.2:
+            sleep(0.2 - elapsed)
+        
+        print('time elapsed:', time() - start)
 
-    # plt.show()
 
 if __name__ == '__main__':
     main()

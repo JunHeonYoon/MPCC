@@ -24,23 +24,23 @@ Bounds::Bounds()
 Bounds::Bounds(BoundsParam bounds_param,Param param):
 param_(param)
 {
-    l_bounds_x_(0) = 1.1*bounds_param.lower_state_bounds.q1_l;
-    l_bounds_x_(1) = 1.1*bounds_param.lower_state_bounds.q2_l;
-    l_bounds_x_(2) = 1.1*bounds_param.lower_state_bounds.q3_l;
-    l_bounds_x_(3) = 1.1*bounds_param.lower_state_bounds.q4_l;
-    l_bounds_x_(4) = 1.1*bounds_param.lower_state_bounds.q5_l;
-    l_bounds_x_(5) = 1.1*bounds_param.lower_state_bounds.q6_l;
-    l_bounds_x_(6) = 1.1*bounds_param.lower_state_bounds.q7_l;
+    l_bounds_x_(0) = bounds_param.lower_state_bounds.q1_l;
+    l_bounds_x_(1) = bounds_param.lower_state_bounds.q2_l;
+    l_bounds_x_(2) = bounds_param.lower_state_bounds.q3_l;
+    l_bounds_x_(3) = bounds_param.lower_state_bounds.q4_l;
+    l_bounds_x_(4) = bounds_param.lower_state_bounds.q5_l;
+    l_bounds_x_(5) = bounds_param.lower_state_bounds.q6_l;
+    l_bounds_x_(6) = bounds_param.lower_state_bounds.q7_l;
     l_bounds_x_(7) = bounds_param.lower_state_bounds.s_l;
     l_bounds_x_(8) = bounds_param.lower_state_bounds.vs_l;
 
-    u_bounds_x_(0) = 1.1*bounds_param.upper_state_bounds.q1_u;
-    u_bounds_x_(1) = 1.1*bounds_param.upper_state_bounds.q2_u;
-    u_bounds_x_(2) = 1.1*bounds_param.upper_state_bounds.q3_u;
-    u_bounds_x_(3) = 1.1*bounds_param.upper_state_bounds.q4_u;
-    u_bounds_x_(4) = 1.1*bounds_param.upper_state_bounds.q5_u;
-    u_bounds_x_(5) = 1.1*bounds_param.upper_state_bounds.q6_u;
-    u_bounds_x_(6) = 1.1*bounds_param.upper_state_bounds.q7_u;
+    u_bounds_x_(0) = bounds_param.upper_state_bounds.q1_u;
+    u_bounds_x_(1) = bounds_param.upper_state_bounds.q2_u;
+    u_bounds_x_(2) = bounds_param.upper_state_bounds.q3_u;
+    u_bounds_x_(3) = bounds_param.upper_state_bounds.q4_u;
+    u_bounds_x_(4) = bounds_param.upper_state_bounds.q5_u;
+    u_bounds_x_(5) = bounds_param.upper_state_bounds.q6_u;
+    u_bounds_x_(6) = bounds_param.upper_state_bounds.q7_u;
     u_bounds_x_(7) = bounds_param.upper_state_bounds.s_u;
     u_bounds_x_(8) = bounds_param.upper_state_bounds.vs_u;
 

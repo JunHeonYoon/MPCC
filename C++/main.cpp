@@ -45,7 +45,7 @@ int main() {
     Integrator integrator = Integrator(jsonConfig["Ts"],json_paths);
     RobotModel robot = RobotModel();
     SelCollNNmodel selcolNN = SelCollNNmodel();
-    selcolNN.setNeuralNetwork(PANDA_DOF, 1,(Eigen::VectorXd(2) << 128, 64).finished(), true);
+    selcolNN.setNeuralNetwork(PANDA_DOF, 1,(Eigen::VectorXd(3) << 128, 64, 32).finished(), true);
 
     std::vector<MPCReturn> log;
     MPC mpc(jsonConfig["Ts"],json_paths);
@@ -70,8 +70,21 @@ int main() {
     end_s = mpc.track_.getLength();
     std::cout<<"end posi: "<<end_point.transpose()<<std::endl;
 
-    ofstream debug_file;
+    ofstream debug_file, splined_path_file;
     debug_file.open("debug.txt");
+    splined_path_file.open("splined_path.txt");
+
+    for(size_t i=0; i<mpc.track_.path_data_.n_points; i++)
+    {
+        Eigen::Quaterniond quaternion(mpc.track_.path_data_.R[i]);
+        splined_path_file << mpc.track_.path_data_.X(i) << " "
+                          << mpc.track_.path_data_.Y(i) << " "
+                          << mpc.track_.path_data_.Z(i) << " "
+                          << quaternion.x() << " "
+                          << quaternion.y() << " "
+                          << quaternion.z() << " "
+                          << quaternion.w() << std::endl;
+    }
 
     for(int i = 0; i < jsonConfig["n_sim"]; i++)
     {

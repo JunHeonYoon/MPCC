@@ -24,8 +24,8 @@ Constraints::Constraints()
 Constraints::Constraints(double Ts,const PathToJson &path) 
 :param_(Param(path.param_path))
 {
-    Eigen::Vector2d sel_col_n_hidden;
-    sel_col_n_hidden << 128, 64;
+    Eigen::Vector3d sel_col_n_hidden;
+    sel_col_n_hidden << 128, 64, 32;
     selcolNN_.setNeuralNetwork(PANDA_DOF, 1, sel_col_n_hidden, true);
 }
 
@@ -72,23 +72,23 @@ void Constraints::getSelcollConstraint(const State &x,const Input &u,int k,
     if(constraint)
     {
         constraint->setZero();
-        // if(k != N)
-        // {
-        //     constraint->c_l = -INF;
-        //     constraint->c_u = 0.0;
-        //     constraint->c = -d_min_dist.dot(dq) + RBF;
-        // }
+        if(k != N)
+        {
+            constraint->c_l = -INF;
+            constraint->c_u = 0.0;
+            constraint->c = -d_min_dist.dot(dq) + RBF;
+        }
     }
     if(Jac)
     {
         Jac->setZero();
-        // if(k != N)
-        // {
-        //     Eigen::Matrix<double, PANDA_DOF, PANDA_DOF> dd_min_dist = d_min_dist * d_min_dist.transpose(); // hessian matrix (approximation)
-        //     double d_RBF = getDRBF(delta, min_dist - r);
-        //     Jac->c_x_i.block(0,si_index.q1,1,PANDA_DOF) = (-dd_min_dist*dq + d_RBF*d_min_dist).transpose();
-        //     Jac->c_u_i.block(0,si_index.dq1,1,PANDA_DOF) = -d_min_dist.transpose();
-        // }
+        if(k != N)
+        {
+            Eigen::Matrix<double, PANDA_DOF, PANDA_DOF> dd_min_dist = d_min_dist * d_min_dist.transpose(); // hessian matrix (approximation)
+            double d_RBF = getDRBF(delta, min_dist - r);
+            Jac->c_x_i.block(0,si_index.q1,1,PANDA_DOF) = (-dd_min_dist*dq + d_RBF*d_min_dist).transpose();
+            Jac->c_u_i.block(0,si_index.dq1,1,PANDA_DOF) = -d_min_dist.transpose();
+        }
     }
     return;
 }
@@ -101,11 +101,11 @@ void Constraints::getSingularConstraint(const State &x,const Input &u,const Robo
     const dJointVector dq = inputTodJointVector(u);
 
     //  compute manipulability and its derivative
-    double manipulability = 100.*rb.manipul; 
-    Eigen::VectorXd d_manipulability = 100.*rb.d_manipul;
+    double manipulability = rb.manipul; 
+    Eigen::VectorXd d_manipulability = rb.d_manipul;
 
     // compute RBF value of manipulability and its derivative
-    double eps = 100.*0.01;    // buffer
+    double eps = 0.03;    // buffer
     double delta = -0.5;  // switching point of RBF
     double RBF = getRBF(delta, manipulability - eps);
 

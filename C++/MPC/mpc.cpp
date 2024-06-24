@@ -87,11 +87,32 @@ MPCReturn MPC::runMPC(State &x0)
 
     initial_guess_ = solver_interface_->solveOCP(&sqp_status, &time_nmpc);
     if(sqp_status == MAX_ITER_EXCEEDED) valid_initial_guess_ = false;
-    else if(sqp_status == QP_INFISIBLE)
+    else if(sqp_status != SOLVED)
     {
-        std::cout << "=========================================" << std::endl;
-        std::cout << "=========== QP did not solved ===========" << std::endl;
-        std::cout << "=========================================" << std::endl;
+        std::cout << "===================================================" << std::endl;
+        std::cout << "================ QP did not solved ================" << std::endl;
+        switch (sqp_status)
+        {
+        case QP_DualInfeasible:
+            std::cout << "================= Dual Infeasible ================="<< std::endl;
+            break;
+        case QP_DualInfeasibleInaccurate:
+            std::cout << "============ Dual Infeasible Inaccurate ============"<< std::endl;
+            break;
+        case QP_MaxIterReached:
+            std::cout << "================ Max Iter reached =================="<< std::endl;
+            break;
+        case QP_PrimalInfeasible:
+            std::cout << "================= Primal Infeasible ================"<< std::endl;
+            break;
+        case QP_PrimalInfeasibleInaccurate:
+            std::cout << "=========== Primal Infeasible Inaccurate ============"<< std::endl;
+            break;
+        case QP_SolvedInaccurate:
+            std::cout << "================= Solved Inaccurate ================="<< std::endl;
+            break;
+        }
+        std::cout << "===================================================" << std::endl;
         valid_initial_guess_ = false;
     }
 
