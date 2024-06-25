@@ -13,7 +13,7 @@ from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Header
 
 N = 10
-SLECOL_BUFFER = 1.0
+SLECOL_BUFFER = 3.0
 MANI_BUFFER = 0.03
 
 # Function to create a Path message from the track data
@@ -100,11 +100,11 @@ def plt_func(fig, selcol_ax, mani_ax,
              time_data, min_dist_real_data, min_dist_pred_data, mani_data):
     if time_data.shape[0] > 10:
         time_data = time_data[-10:]
-        # min_dist_real_data = min_dist_real_data[-10:]
+        min_dist_real_data = min_dist_real_data[-10:]
         min_dist_pred_data = min_dist_pred_data[-10:]
         mani_data = mani_data[-10:]
 
-    # min_dist_true_line.set_data(time_data, min_dist_real_data)
+    min_dist_true_line.set_data(time_data, min_dist_real_data)
     min_dist_pred_line.set_data(time_data, min_dist_pred_data)
     mani_line.set_data(time_data, mani_data)
 
@@ -122,7 +122,7 @@ def plt_func(fig, selcol_ax, mani_ax,
     buffer_line_mani = mani_ax.hlines(y=MANI_BUFFER, xmin=x_min, xmax=x_max, label='buffer (mani)', color="black", linewidth=2.0)
 
     # Ensure all lines are included in the legend
-    # lines_selcol = [min_dist_true_line, min_dist_pred_line, buffer_line_selcol]
+    lines_selcol = [min_dist_true_line, min_dist_pred_line, buffer_line_selcol]
     lines_selcol = [min_dist_pred_line, buffer_line_selcol]
     labels_selcol = [line.get_label() for line in lines_selcol]
     selcol_ax.legend(lines_selcol, labels_selcol)
@@ -154,7 +154,7 @@ def main():
     fig, (selcol_ax, mani_ax) = plt.subplots(2, 1, figsize=(12, 8))
 
     min_dist_true_line, = selcol_ax.plot([],[], label='ans', color="blue", linewidth=4.0, linestyle='--')
-    # min_dist_pred_line, = selcol_ax.plot([],[], label='pred', color = "red", linewidth=2.0)
+    min_dist_pred_line, = selcol_ax.plot([],[], label='pred', color = "red", linewidth=2.0)
     min_dist_pred_line, = selcol_ax.plot([],[], label='min dist', color = "red", linewidth=2.0)
     selcol_ax.legend()
     selcol_ax.set_ylim([min(np.min(pred_min_dist_set), SLECOL_BUFFER) - 5, np.max(pred_min_dist_set) + 5])
@@ -186,7 +186,7 @@ def main():
     min_dist_real_data = np.zeros((1))
     min_dist_pred_data = np.zeros((1))
     mani_data = np.zeros((1))
-    sleep(5)
+    # sleep(5)
 
     for iter in range(q_set.shape[0]):
         start = time()
@@ -210,8 +210,8 @@ def main():
         ref_local_path_pub.publish(ref_local_path_msg)
         end = time()
         elapsed = end - start
-        if elapsed < 0.2:
-            sleep(0.2 - elapsed)
+        # if elapsed < 0.2:
+        #     sleep(0.2 - elapsed)
         
         print('time elapsed:', time() - start)
 

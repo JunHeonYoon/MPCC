@@ -61,11 +61,11 @@ void Constraints::getSelcollConstraint(const State &x,const Input &u,int k,
 
     // compute minimum distance between each links and its derivative
     auto y_pred = selcolNN_.calculateMlpOutput(q, false); // first: min_dist, second: derivative wrt q
-    double min_dist = y_pred.first.value(); // unit: [cm]
-    Eigen::VectorXd d_min_dist = y_pred.second.transpose();
+    double min_dist = 0.01*y_pred.first.value(); // unit: [cm]
+    Eigen::VectorXd d_min_dist = 0.01*y_pred.second.transpose();
 
     // compute RBF value of minimum distance and its derivative
-    double r = 1.0; // buffer [cm]
+    double r = 0.01*3.0; // buffer [cm]
     double delta = -0.5; // switching point of RBF
     double RBF = getRBF(delta, min_dist - r);
 
@@ -112,23 +112,23 @@ void Constraints::getSingularConstraint(const State &x,const Input &u,const Robo
     if(constraint)
     {
         constraint->setZero();
-        // if(k!=N)
-        // {
-        //     constraint->c_l = -INF;
-        //     constraint->c_u = 0.0;
-        //     constraint->c = -d_manipulability.dot(dq) + RBF;
-        // }
+        if(k!=N)
+        {
+            constraint->c_l = -INF;
+            constraint->c_u = 0.0;
+            constraint->c = -d_manipulability.dot(dq) + RBF;
+        }
     }
     if(Jac)
     {
         Jac->setZero();
-        // if(k!=N)
-        // {
-        //     Eigen::Matrix<double, PANDA_DOF, PANDA_DOF> dd_manipulability = d_manipulability * d_manipulability.transpose(); // hessian matrix (approximation)
-        //     double d_RBF = getDRBF(delta, manipulability - eps);
-        //     Jac->c_x_i.block(0,si_index.q1,1,PANDA_DOF) = (-dd_manipulability*dq + d_RBF*d_manipulability).transpose();
-        //     Jac->c_u_i.block(0,si_index.dq1,1,PANDA_DOF) = -d_manipulability.transpose();
-        // }
+        if(k!=N)
+        {
+            Eigen::Matrix<double, PANDA_DOF, PANDA_DOF> dd_manipulability = d_manipulability * d_manipulability.transpose(); // hessian matrix (approximation)
+            double d_RBF = getDRBF(delta, manipulability - eps);
+            Jac->c_x_i.block(0,si_index.q1,1,PANDA_DOF) = (-dd_manipulability*dq + d_RBF*d_manipulability).transpose();
+            Jac->c_u_i.block(0,si_index.dq1,1,PANDA_DOF) = -d_manipulability.transpose();
+        }
     }
     return;
 }
