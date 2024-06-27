@@ -330,6 +330,7 @@ double ArcLengthSpline::projectOnSpline(const double &s, const Eigen::Vector3d e
         auto min_iter = std::min_element(dist_square_vec.begin(),dist_square_vec.end());
         s_opt = path_data_.s(std::distance(dist_square_vec.begin(), min_iter));
     }
+    else return s_opt;
 
     if(s_opt >= path_data_.s(path_data_.n_points-1)) return path_data_.s(path_data_.n_points-1);
 

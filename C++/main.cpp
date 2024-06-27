@@ -50,7 +50,7 @@ int main() {
     std::vector<MPCReturn> log;
     MPC mpc(jsonConfig["Ts"],json_paths);
 
-    State x0 = {0., 0., 0., -M_PI/2, 0, M_PI/2, M_PI/4,
+    State x0 = {M_PI/6., 0., 0., -M_PI/2, 0, M_PI/2, M_PI/4,
                 0., 0.};
     Eigen::Vector3d ee_pos = robot.getEEPosition(stateToJointVector(x0));
     Eigen::Matrix3d ee_ori = robot.getEEOrientation(stateToJointVector(x0));

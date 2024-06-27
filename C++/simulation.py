@@ -17,7 +17,7 @@ SLECOL_BUFFER = 3.0
 MANI_BUFFER = 0.03
 
 # Function to create a Path message from the track data
-def create_path_message1(track_data):
+def create_path_message1(track_data, init_position):
     path = Path()
     path.header = Header()
     path.header.stamp = rospy.Time.now()
@@ -32,9 +32,9 @@ def create_path_message1(track_data):
                                                        track_data['quat_Z'], track_data['quat_W']):
         pose = PoseStamped()
         pose.header = path.header
-        pose.pose.position.x = x - initial_x + 0.55450 
-        pose.pose.position.y = y - initial_y + 0.
-        pose.pose.position.z = z - initial_z + 0.52110
+        pose.pose.position.x = x - initial_x + init_position[0] 
+        pose.pose.position.y = y - initial_y + init_position[1]
+        pose.pose.position.z = z - initial_z + init_position[2]
         pose.pose.orientation.x = quat_x
         pose.pose.orientation.y = quat_y
         pose.pose.orientation.z = quat_z
@@ -177,7 +177,7 @@ def main():
     with open('Params/track.json', 'r') as f:
         track_data = json.load(f)
     
-    global_path_msg = create_path_message1(track_data)
+    global_path_msg = create_path_message1(track_data, pred_ee_posi_set[0,0:3])
 
     splined_path_set = np.loadtxt("build/splined_path.txt")
     splined_path_msg = create_path_message2(splined_path_set)
@@ -199,8 +199,8 @@ def main():
         min_dist_pred_data = np.append(min_dist_pred_data, np.array([pred_min_dist_set[iter]]), axis=0)
         mani_data = np.append(mani_data, np.array([mani_set[iter]]), axis=0)
 
-        plt_func(fig, selcol_ax, mani_ax, min_dist_true_line, min_dist_pred_line, mani_line, time_data, min_dist_real_data, min_dist_pred_data, mani_data)
-        # plt.pause(0.01)
+        # plt_func(fig, selcol_ax, mani_ax, min_dist_true_line, min_dist_pred_line, mani_line, time_data, min_dist_real_data, min_dist_pred_data, mani_data)
+        plt.pause(0.01)
         
         local_path_msg = create_pred_path_message(pred_ee_posi_set[iter,:])
         ref_local_path_msg = create_pred_path_message(ref_ee_posi_set[iter,:])

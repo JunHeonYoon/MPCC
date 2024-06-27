@@ -470,7 +470,8 @@ bool OsqpInterface::solveQP(const Eigen::MatrixXd &P, const Eigen::VectorXd &q, 
     // solve the QP problem
     if (solver_.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) return false;
     qp_status = solver_.getStatus();
-    if (solver_.getStatus() != OsqpEigen::Status::Solved && solver_.getStatus() != OsqpEigen::Status::SolvedInaccurate) return false;
+    if (solver_.getStatus() != OsqpEigen::Status::Solved) return false;
+    // if (solver_.getStatus() != OsqpEigen::Status::Solved && solver_.getStatus() != OsqpEigen::Status::SolvedInaccurate) return false;
 
     // get the controller input
     step = solver_.getSolution();
