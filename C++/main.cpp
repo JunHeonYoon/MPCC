@@ -125,6 +125,7 @@ int main() {
         std::cout << "==============================================================="<<std::endl;
         
         debug_file << stateToJointVector(x0).transpose() << " " 
+                   << inputTodJointVector(mpc_sol.u0).transpose() << " " 
                    << (selcolNN.calculateMlpOutput(stateToJointVector(x0),false)).first << " "
                    << robot.getManipulability(stateToJointVector(x0)) << " ";
                 //    << std::endl;

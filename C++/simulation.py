@@ -140,10 +140,11 @@ def main(args):
     dataset = np.loadtxt("build/debug.txt")
     print(dataset.shape)
     q_set = dataset[:,0:7]
-    pred_min_dist_set = dataset[:,7]
-    mani_set = dataset[:,8]
-    pred_ee_posi_set = dataset[:, 9:9+(3*N)]
-    ref_ee_posi_set = dataset[:, 9+(3*N):9+2*(3*N)]
+    qdot_set = dataset[:,7:14]
+    pred_min_dist_set = dataset[:,14]
+    mani_set = dataset[:,15]
+    pred_ee_posi_set = dataset[:, 16:16+(3*N)]
+    ref_ee_posi_set = dataset[:, 16+(3*N):16+2*(3*N)]
 
     if(args.plot):
         # Animated plotter
