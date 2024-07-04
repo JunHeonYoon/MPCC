@@ -68,23 +68,23 @@ void Constraints::getSelcollConstraint(const State &x,const Input &u,const Robot
     if(constraint)
     {
         constraint->setZero();
-        // if(k != N)
-        // {
-        //     constraint->c_l = -INF;
-        //     constraint->c_u = 0.0;
-        //     constraint->c = -d_min_dist.dot(dq) + RBF;
-        // }
+        if(k != N)
+        {
+            constraint->c_l = -INF;
+            constraint->c_u = 0.0;
+            constraint->c = -d_min_dist.dot(dq) + RBF;
+        }
     }
     if(Jac)
     {
         Jac->setZero();
-        // if(k != N)
-        // {
-        //     Eigen::Matrix<double, PANDA_DOF, PANDA_DOF> dd_min_dist = d_min_dist * d_min_dist.transpose(); // hessian matrix (approximation)
-        //     double d_RBF = getDRBF(delta, min_dist - r);
-        //     Jac->c_x_i.block(0,si_index.q1,1,PANDA_DOF) = (-dd_min_dist*dq + d_RBF*d_min_dist).transpose();
-        //     Jac->c_u_i.block(0,si_index.dq1,1,PANDA_DOF) = -d_min_dist.transpose();
-        // }
+        if(k != N)
+        {
+            Eigen::Matrix<double, PANDA_DOF, PANDA_DOF> dd_min_dist = d_min_dist * d_min_dist.transpose(); // hessian matrix (approximation)
+            double d_RBF = getDRBF(delta, min_dist - r);
+            Jac->c_x_i.block(0,si_index.q1,1,PANDA_DOF) = (-dd_min_dist*dq + d_RBF*d_min_dist).transpose();
+            Jac->c_u_i.block(0,si_index.dq1,1,PANDA_DOF) = -d_min_dist.transpose();
+        }
     }
     return;
 }
