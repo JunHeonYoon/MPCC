@@ -8,5 +8,9 @@
 
   "rdq"  : 0.01,
   "rdVs" : 1,
-  "rVee" : 0.5
+  "rVee" : 0.5,
+
+  "qC_reduction_ratio"   : 1.0,
+  "qL_increase_ratio"    : 1.0,
+  "qOri_reduction_ratio" : 1.0
 }

@@ -99,9 +99,9 @@ quat_list = np.tile(quat, (x_points.size, 1))
 
 total_desc = f""" 
 {{
-    "X": {list(map(np.double, y_points))},
-    "Y": {list(map(np.double, -x_points))},
-    "Z": {list(map(np.double, np.zeros(x_points.shape)))},
+    "X": {list(map(np.double, np.zeros(x_points.shape)))},
+    "Y": {list(map(np.double, x_points))},
+    "Z": {list(map(np.double, y_points))},
     "quat_X": {list(map(np.double, quat_list[:,0]))},
     "quat_Y": {list(map(np.double, quat_list[:,1]))},
     "quat_Z": {list(map(np.double, quat_list[:,2]))},

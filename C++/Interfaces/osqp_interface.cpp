@@ -27,6 +27,10 @@ normalization_param_(NormalizationParam(path.normalization_path)),
 sqp_param_(SQPParam(path.sqp_path))
 {   
     robot_ = std::make_unique<RobotModel>();
+    selcolNN_ = std::make_unique<SelCollNNmodel>();
+    Eigen::Vector3d sel_col_n_hidden;
+    sel_col_n_hidden << 128, 64, 32;
+    selcolNN_->setNeuralNetwork(PANDA_DOF, 1, sel_col_n_hidden, true);
 }
 
 void OsqpInterface::setTrack(const ArcLengthSpline track)
@@ -54,7 +58,7 @@ void OsqpInterface::setCost(const std::array<OptVariables,N+1> &initial_guess,
     for(size_t i=0; i<=N; i++)
     {
         RobotData rbk;
-        rbk.update(stateToJointVector(initial_guess[i].xk), robot_);
+        rbk.update(stateToJointVector(initial_guess[i].xk), robot_, selcolNN_);
 
         double obj_k;
         CostGrad grad_cost_k;
@@ -153,7 +157,7 @@ void OsqpInterface::setPolytopicConstraints(const std::array<OptVariables,N+1> &
     for(size_t i=0;i<=N;i++)
     {
         RobotData rbk;
-        rbk.update(stateToJointVector(initial_guess[i].xk), robot_);
+        rbk.update(stateToJointVector(initial_guess[i].xk), robot_, selcolNN_);
 
         ConstraintsInfo constr_info_k;
         ConstraintsJac jac_constr_k;

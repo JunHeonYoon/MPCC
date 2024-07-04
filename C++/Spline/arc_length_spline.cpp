@@ -239,7 +239,7 @@ void ArcLengthSpline::fitSpline(const Eigen::VectorXd &X,const Eigen::VectorXd &
     second_refined_path = resamplePath(second_spline_x,second_spline_y,second_spline_z,second_spline_r,total_arc_length);
     ////////////////////////////////////////////
     setRegularData(second_refined_path.X,second_refined_path.Y,second_refined_path.Z,second_refined_path.R,second_refined_path.s);
-//    setData(second_refined_path.X,second_refined_path.Y);
+    // setData(second_refined_path.X,second_refined_path.Y);
     // Final spline fit with fixed Delta_s
     spline_x_.genSpline(path_data_.s,path_data_.X,true);
     spline_y_.genSpline(path_data_.s,path_data_.Y,true);
@@ -252,13 +252,12 @@ void ArcLengthSpline::gen6DSpline(const Eigen::VectorXd &X,const Eigen::VectorXd
     // generate 6-D arc length parametrized spline given X-Y-Z-R data
 
     // remove outliers, depending on how irregular the points are this can help
-    RawPath clean_path;
+    // RawPath clean_path;
     // clean_path = outlierRemoval(X,Y,Z,R);
     // successively fit spline and re-sample
     // fitSpline(clean_path.X,clean_path.Y,clean_path.Z,clean_path.R);
     fitSpline(X,Y,Z,R);
 }
-
 
 Eigen::Vector3d ArcLengthSpline::getPostion(const double s) const
 {
@@ -330,7 +329,7 @@ double ArcLengthSpline::projectOnSpline(const double &s, const Eigen::Vector3d e
         auto min_iter = std::min_element(dist_square_vec.begin(),dist_square_vec.end());
         s_opt = path_data_.s(std::distance(dist_square_vec.begin(), min_iter));
     }
-    else return s_opt;
+    // else return s_opt;
 
     if(s_opt >= path_data_.s(path_data_.n_points-1)) return path_data_.s(path_data_.n_points-1);
 

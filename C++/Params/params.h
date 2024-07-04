@@ -56,6 +56,11 @@ public:
     double r_Vee;    // weight for end-effector velocity
     double r_dVs;    // weight for accelerate of path parameter
 
+    // Reduction and Increase ratio
+    double q_c_red_ratio;    // reduction ratio of weight for contouring error
+    double q_l_inc_ratio;    // increasing ratio of weight for lag error
+    double q_ori_red_ratio;  // reduction ratio of weight for heading cost
+
 
     CostParam();
     CostParam(std::string file);

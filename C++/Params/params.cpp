@@ -64,6 +64,10 @@ CostParam::CostParam(std::string file){
     r_dq = jsonCost["rdq"];
     r_Vee = jsonCost["rVee"];
     r_dVs = jsonCost["rdVs"];
+
+    q_c_red_ratio = jsonCost["qC_reduction_ratio"];
+    q_l_inc_ratio = jsonCost["qL_increase_ratio"];
+    q_ori_red_ratio = jsonCost["qOri_reduction_ratio"];
 }
 
 BoundsParam::BoundsParam() {

@@ -20,7 +20,6 @@
 #include "config.h"
 #include "Spline/arc_length_spline.h"
 #include "Model/model.h"
-#include "SelfCollision/SelfCollisionModel.h"
 #include "Model/robot_data.h"
 namespace mpcc{
 
@@ -118,10 +117,11 @@ private:
     /// @brief compute self-collision inequality constraint given current state and input
     /// @param x (State) current state
     /// @param u (ControlInput) current control input
+    /// @param rb (RobotData) kinemetic information (ex. EE-pose, Jacobian, ...) wrt current state
     /// @param k (int) receding horizon index
     /// @param constraint (*OneDConstraintInfo) constraint information(c,l,u) wrt state and input 
     /// @param Jac (*ConstraintsJac) jacobian of constraint value wrt state and input 
-    void getSelcollConstraint(const State &x,const Input &u,int k,
+    void getSelcollConstraint(const State &x,const Input &u,const RobotData &rb,int k,
                               OneDConstraintInfo *constraint, OneDConstraintsJac* Jac);
 
     /// @brief compute Singularity inequality constraint given current state and input
@@ -136,7 +136,6 @@ private:
 
 
     Param param_;
-    SelCollNNmodel selcolNN_;
 };
 }
 

@@ -39,9 +39,14 @@ TEST(TestCost, TestSPD)
     mpcc::Bounds bound = mpcc::Bounds(mpcc::BoundsParam(json_paths.bounds_path), mpcc::Param(json_paths.param_path));
     mpcc::Cost cost = mpcc::Cost(json_paths);
     std::unique_ptr<mpcc::RobotModel> robot = std::make_unique<mpcc::RobotModel>();
+    std::unique_ptr<mpcc::SelCollNNmodel> selcolNN = std::make_unique<mpcc::SelCollNNmodel>();
     mpcc::ArcLengthSpline track = mpcc::ArcLengthSpline(json_paths);
-    genRoundTrack(track);
 
+    Eigen::Vector3d sel_col_n_hidden;
+    sel_col_n_hidden << 128, 64, 32;
+    selcolNN->setNeuralNetwork(mpcc::PANDA_DOF, 1, sel_col_n_hidden, true);
+
+    genRoundTrack(track);
 
     mpcc::Bounds_x x_LB = bound.getBoundsLX();
     mpcc::Bounds_x x_UB = bound.getBoundsUX();
@@ -63,7 +68,7 @@ TEST(TestCost, TestSPD)
     mpcc::Input uk = mpcc::vectorToInput(uk_vec);
 
     mpcc::RobotData rbk;
-    rbk.update(xk_vec.head(mpcc::PANDA_DOF),robot);
+    rbk.update(xk_vec.head(mpcc::PANDA_DOF),robot,selcolNN);
 
     // calculate cost matrix
     double temp_obj;
@@ -110,11 +115,17 @@ TEST(TestCost, TestLinearization)
                                  mpcc::pkg_path + std::string(jsonConfig["sqp_path"])};
     mpcc::Bounds bound = mpcc::Bounds(mpcc::BoundsParam(json_paths.bounds_path), mpcc::Param(json_paths.param_path));
     std::unique_ptr<mpcc::RobotModel> robot = std::make_unique<mpcc::RobotModel>();
+    std::unique_ptr<mpcc::SelCollNNmodel> selcolNN = std::make_unique<mpcc::SelCollNNmodel>();
     mpcc::Cost cost = mpcc::Cost(json_paths);
     mpcc::CostParam cost_param = mpcc::CostParam(json_paths.cost_path);
     mpcc::Param param = mpcc::Param(json_paths.param_path);
     mpcc::ArcLengthSpline track = mpcc::ArcLengthSpline(json_paths);
+
     genRoundTrack(track);
+
+    Eigen::Vector3d sel_col_n_hidden;
+    sel_col_n_hidden << 128, 64, 32;
+    selcolNN->setNeuralNetwork(mpcc::PANDA_DOF, 1, sel_col_n_hidden, true);
 
     mpcc::Bounds_x x_LB = bound.getBoundsLX();
     mpcc::Bounds_x x_UB = bound.getBoundsUX();
@@ -143,8 +154,8 @@ TEST(TestCost, TestLinearization)
     mpcc::Input uk1 = mpcc::vectorToInput(uk1_vec);
 
     mpcc::RobotData rbk, rbk1;
-    rbk.update(xk_vec.head(mpcc::PANDA_DOF),robot);
-    rbk1.update(xk1_vec.head(mpcc::PANDA_DOF),robot);
+    rbk.update(xk_vec.head(mpcc::PANDA_DOF),robot,selcolNN);
+    rbk1.update(xk1_vec.head(mpcc::PANDA_DOF),robot,selcolNN);
 
     double obj, obj1;
     mpcc::CostGrad cost_grad;

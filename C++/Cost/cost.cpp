@@ -110,8 +110,16 @@ void Cost::getContouringCost(const ArcLengthSpline &track,const State &x,const R
     // contouring cost matrix
     Eigen::Vector2d ContouringCost;
     ContouringCost.setZero(2);
-    ContouringCost(0) = k < N ? cost_param_.q_c : cost_param_.q_c_N_mult * cost_param_.q_c; // for contouring error
-    ContouringCost(1) = cost_param_.q_l; // for lag error
+    if(rb.min_dist < 3.0 || rb.manipul < 0.03)
+    {
+        ContouringCost(0) = k < N ? cost_param_.q_c_red_ratio*cost_param_.q_c : cost_param_.q_c_red_ratio*cost_param_.q_c_N_mult * cost_param_.q_c; // for contouring error
+        ContouringCost(1) = cost_param_.q_l_inc_ratio*cost_param_.q_l; // for lag error
+    }
+    else
+    {
+        ContouringCost(0) = k < N ? cost_param_.q_c : cost_param_.q_c_N_mult * cost_param_.q_c; // for contouring error
+        ContouringCost(1) = cost_param_.q_l; // for lag error
+    }
 
     // progress maximization part
     double s_max = track.getLength();
@@ -157,10 +165,20 @@ void Cost::getHeadingCost(const ArcLengthSpline &track,const State &x,const Robo
     const Eigen::Vector3d Log_R_bar = getInverseSkewVector(LogMatrix(R_bar));
     Eigen::Matrix<double,3,NX> d_Log_R_bar = Eigen::MatrixXd::Zero(3,NX);
 
+    double heading_cost;
+    if(rb.min_dist < 3.0 || rb.manipul < 0.03)
+    {
+        heading_cost = cost_param_.q_ori_red_ratio * cost_param_.q_ori;
+    }
+    else
+    {
+        heading_cost = cost_param_.q_ori;
+    }
+
     // Exact Heading error cost
     if(obj)
     {
-        (*obj) = cost_param_.q_ori * Log_R_bar.squaredNorm();
+        (*obj) = heading_cost * Log_R_bar.squaredNorm();
     }
 
 
@@ -178,14 +196,14 @@ void Cost::getHeadingCost(const ArcLengthSpline &track,const State &x,const Robo
     if(grad)
     {
         grad->setZero();
-        grad->f_x = 2.0 * cost_param_.q_ori * d_Log_R_bar.transpose() * Log_R_bar;
+        grad->f_x = 2.0 * heading_cost * d_Log_R_bar.transpose() * Log_R_bar;
     }
 
     // Hessian of Heading error cost
     if(hess)
     {
         hess->setZero();
-        hess->f_xx = 2.0 * cost_param_.q_ori * d_Log_R_bar.transpose() * d_Log_R_bar;
+        hess->f_xx = 2.0 * heading_cost * d_Log_R_bar.transpose() * d_Log_R_bar;
     }
     return;
 }

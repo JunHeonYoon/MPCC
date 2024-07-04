@@ -68,6 +68,7 @@ public:
 private:
     ArcLengthSpline track_;
     std::unique_ptr<RobotModel> robot_;
+    std::unique_ptr<SelCollNNmodel> selcolNN_;
     Cost cost_;
     Model model_;
     Constraints constraints_;

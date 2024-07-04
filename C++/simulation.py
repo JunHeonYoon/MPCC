@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from srmt.planning_scene import PlanningScene
 import json
 from time import time, sleep
+import argparse
 
 
 # ROS library
@@ -98,11 +99,6 @@ import matplotlib.pyplot as plt
 def plt_func(fig, selcol_ax, mani_ax, 
              min_dist_true_line, min_dist_pred_line, mani_line, 
              time_data, min_dist_real_data, min_dist_pred_data, mani_data):
-    if time_data.shape[0] > 10:
-        time_data = time_data[-10:]
-        min_dist_real_data = min_dist_real_data[-10:]
-        min_dist_pred_data = min_dist_pred_data[-10:]
-        mani_data = mani_data[-10:]
 
     min_dist_true_line.set_data(time_data, min_dist_real_data)
     min_dist_pred_line.set_data(time_data, min_dist_pred_data)
@@ -136,7 +132,7 @@ def plt_func(fig, selcol_ax, mani_ax,
 
 
 
-def main():
+def main(args):
     # Create Planning Scene
     pc = PlanningScene(arm_names=["panda"], arm_dofs=[7], base_link="world")
 
@@ -149,23 +145,24 @@ def main():
     pred_ee_posi_set = dataset[:, 9:9+(3*N)]
     ref_ee_posi_set = dataset[:, 9+(3*N):9+2*(3*N)]
 
-    # Animated plotter
-    plt.ion()
-    fig, (selcol_ax, mani_ax) = plt.subplots(2, 1, figsize=(12, 8))
+    if(args.plot):
+        # Animated plotter
+        plt.ion()
+        fig, (selcol_ax, mani_ax) = plt.subplots(2, 1, figsize=(12, 8))
 
-    min_dist_true_line, = selcol_ax.plot([],[], label='ans', color="blue", linewidth=4.0, linestyle='--')
-    min_dist_pred_line, = selcol_ax.plot([],[], label='pred', color = "red", linewidth=2.0)
-    min_dist_pred_line, = selcol_ax.plot([],[], label='min dist', color = "red", linewidth=2.0)
-    selcol_ax.legend()
-    selcol_ax.set_ylim([min(np.min(pred_min_dist_set), SLECOL_BUFFER) - 5, np.max(pred_min_dist_set) + 5])
-    selcol_ax.grid()
+        min_dist_true_line, = selcol_ax.plot([],[], label='ans', color="blue", linewidth=4.0, linestyle='--')
+        min_dist_pred_line, = selcol_ax.plot([],[], label='pred', color = "red", linewidth=2.0)
+        min_dist_pred_line, = selcol_ax.plot([],[], label='min dist', color = "red", linewidth=2.0)
+        selcol_ax.legend()
+        selcol_ax.set_ylim([min(np.min(pred_min_dist_set), SLECOL_BUFFER) - 5, np.max(pred_min_dist_set) + 5])
+        selcol_ax.grid()
 
 
-    # Second subplot
-    mani_line, = mani_ax.plot([], [], label='mani', color="red", linewidth=2.0)
-    mani_ax.legend()
-    mani_ax.set_ylim([min(np.min(mani_set), MANI_BUFFER) - 0.05, np.max(mani_set) + 0.05])
-    mani_ax.grid()
+        # Second subplot
+        mani_line, = mani_ax.plot([], [], label='mani', color="red", linewidth=2.0)
+        mani_ax.legend()
+        mani_ax.set_ylim([min(np.min(mani_set), MANI_BUFFER) - 0.05, np.max(mani_set) + 0.05])
+        mani_ax.grid()
 
 
 
@@ -199,8 +196,16 @@ def main():
         min_dist_pred_data = np.append(min_dist_pred_data, np.array([pred_min_dist_set[iter]]), axis=0)
         mani_data = np.append(mani_data, np.array([mani_set[iter]]), axis=0)
 
-        # plt_func(fig, selcol_ax, mani_ax, min_dist_true_line, min_dist_pred_line, mani_line, time_data, min_dist_real_data, min_dist_pred_data, mani_data)
-        plt.pause(0.01)
+        if time_data.shape[0] > 10:
+            time_data = time_data[-10:]
+            min_dist_real_data = min_dist_real_data[-10:]
+            min_dist_pred_data = min_dist_pred_data[-10:]
+            mani_data = mani_data[-10:]
+
+        if(args.plot):
+            plt_func(fig, selcol_ax, mani_ax, min_dist_true_line, min_dist_pred_line, mani_line, time_data, min_dist_real_data, min_dist_pred_data, mani_data)
+        else:
+            plt.pause(0.01)
         
         local_path_msg = create_pred_path_message(pred_ee_posi_set[iter,:])
         ref_local_path_msg = create_pred_path_message(ref_ee_posi_set[iter,:])
@@ -217,4 +222,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--plot", type=bool, default=False)
+
+    args = parser.parse_args()
+    main(args)

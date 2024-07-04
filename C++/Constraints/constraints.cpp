@@ -24,9 +24,6 @@ Constraints::Constraints()
 Constraints::Constraints(double Ts,const PathToJson &path) 
 :param_(Param(path.param_path))
 {
-    Eigen::Vector3d sel_col_n_hidden;
-    sel_col_n_hidden << 128, 64, 32;
-    selcolNN_.setNeuralNetwork(PANDA_DOF, 1, sel_col_n_hidden, true);
 }
 
 double getRBF(double delta, double h)
@@ -51,7 +48,7 @@ double getDRBF(double delta, double h)
     return result;
 }
 
-void Constraints::getSelcollConstraint(const State &x,const Input &u,int k,
+void Constraints::getSelcollConstraint(const State &x,const Input &u,const RobotData &rb,int k,
                                        OneDConstraintInfo *constraint, OneDConstraintsJac* Jac)
 {
     // compute self-collision constraints
@@ -60,35 +57,34 @@ void Constraints::getSelcollConstraint(const State &x,const Input &u,int k,
     const dJointVector dq = inputTodJointVector(u);
 
     // compute minimum distance between each links and its derivative
-    auto y_pred = selcolNN_.calculateMlpOutput(q, false); // first: min_dist, second: derivative wrt q
-    double min_dist = 0.01*y_pred.first.value(); // unit: [cm]
-    Eigen::VectorXd d_min_dist = 0.01*y_pred.second.transpose();
+    double min_dist = 0.01*rb.min_dist; // unit: [cm]
+    Eigen::VectorXd d_min_dist = 0.01*rb.d_min_dist;
 
     // compute RBF value of minimum distance and its derivative
-    double r = 0.01*3.0; // buffer [cm]
+    double r = 0.01*2.0; // buffer [cm]
     double delta = -0.5; // switching point of RBF
     double RBF = getRBF(delta, min_dist - r);
 
     if(constraint)
     {
         constraint->setZero();
-        if(k != N)
-        {
-            constraint->c_l = -INF;
-            constraint->c_u = 0.0;
-            constraint->c = -d_min_dist.dot(dq) + RBF;
-        }
+        // if(k != N)
+        // {
+        //     constraint->c_l = -INF;
+        //     constraint->c_u = 0.0;
+        //     constraint->c = -d_min_dist.dot(dq) + RBF;
+        // }
     }
     if(Jac)
     {
         Jac->setZero();
-        if(k != N)
-        {
-            Eigen::Matrix<double, PANDA_DOF, PANDA_DOF> dd_min_dist = d_min_dist * d_min_dist.transpose(); // hessian matrix (approximation)
-            double d_RBF = getDRBF(delta, min_dist - r);
-            Jac->c_x_i.block(0,si_index.q1,1,PANDA_DOF) = (-dd_min_dist*dq + d_RBF*d_min_dist).transpose();
-            Jac->c_u_i.block(0,si_index.dq1,1,PANDA_DOF) = -d_min_dist.transpose();
-        }
+        // if(k != N)
+        // {
+        //     Eigen::Matrix<double, PANDA_DOF, PANDA_DOF> dd_min_dist = d_min_dist * d_min_dist.transpose(); // hessian matrix (approximation)
+        //     double d_RBF = getDRBF(delta, min_dist - r);
+        //     Jac->c_x_i.block(0,si_index.q1,1,PANDA_DOF) = (-dd_min_dist*dq + d_RBF*d_min_dist).transpose();
+        //     Jac->c_u_i.block(0,si_index.dq1,1,PANDA_DOF) = -d_min_dist.transpose();
+        // }
     }
     return;
 }
@@ -143,12 +139,12 @@ void Constraints::getConstraints(const State &x,const Input &u,const RobotData &
 
     if(Jac)
     {
-        getSelcollConstraint(x, u, k, &constraint_selcol, &jac_selcol);
+        getSelcollConstraint(x, u, rb, k, &constraint_selcol, &jac_selcol);
         getSingularConstraint(x, u, rb, k, &constraint_sing, &jac_sing);
     }
     else
     {
-        getSelcollConstraint(x, u, k, &constraint_selcol, NULL);
+        getSelcollConstraint(x, u, rb, k, &constraint_selcol, NULL);
         getSingularConstraint(x, u, rb, k, &constraint_sing, NULL);
     }
 

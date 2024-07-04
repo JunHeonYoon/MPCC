@@ -113,6 +113,7 @@ MPCReturn MPC::runMPC(State &x0)
             break;
         }
         std::cout << "===================================================" << std::endl;
+        // exit(0);
         valid_initial_guess_ = false;
     }
 

@@ -71,11 +71,16 @@ TEST(TestConstraints, TestSelfCollision)
                                  mpcc::pkg_path + std::string(jsonConfig["normalization_path"]),
                                  mpcc::pkg_path + std::string(jsonConfig["sqp_path"])};
     mpcc::Bounds bound = mpcc::Bounds(mpcc::BoundsParam(json_paths.bounds_path),mpcc::Param(json_paths.param_path));
-    std::unique_ptr<mpcc::RobotModel> robot = std::make_unique<mpcc::RobotModel>();    
+    std::unique_ptr<mpcc::RobotModel> robot = std::make_unique<mpcc::RobotModel>();
+    std::unique_ptr<mpcc::SelCollNNmodel> selcolNN = std::make_unique<mpcc::SelCollNNmodel>();
     mpcc::Constraints constraints = mpcc::Constraints(0.02,json_paths);
     mpcc::ArcLengthSpline track = mpcc::ArcLengthSpline(json_paths);
     mpcc::Model model = mpcc::Model(0.02, json_paths);
     mpcc::Param param = mpcc::Param(json_paths.param_path);
+
+    Eigen::Vector3d sel_col_n_hidden;
+    sel_col_n_hidden << 128, 64, 32;
+    selcolNN->setNeuralNetwork(mpcc::PANDA_DOF, 1, sel_col_n_hidden, true);
     
     genRoundTrack(track);
 
@@ -106,8 +111,8 @@ TEST(TestConstraints, TestSelfCollision)
     mpcc::Input uk1 = mpcc::vectorToInput(uk1_vec);
 
     mpcc::RobotData rbk, rbk1;
-    rbk.update(xk_vec.head(mpcc::PANDA_DOF),robot);
-    rbk1.update(xk1_vec.head(mpcc::PANDA_DOF),robot);
+    rbk.update(xk_vec.head(mpcc::PANDA_DOF),robot,selcolNN);
+    rbk1.update(xk1_vec.head(mpcc::PANDA_DOF),robot,selcolNN);
 
 
     mpcc::ConstraintsInfo constr_info, constr_info1;
@@ -149,10 +154,15 @@ TEST(TestConstraints, TestSingularity)
                                  mpcc::pkg_path + std::string(jsonConfig["sqp_path"])};
     mpcc::Bounds bound = mpcc::Bounds(mpcc::BoundsParam(json_paths.bounds_path), mpcc::Param(json_paths.param_path));
     std::unique_ptr<mpcc::RobotModel> robot = std::make_unique<mpcc::RobotModel>(); 
+    std::unique_ptr<mpcc::SelCollNNmodel> selcolNN = std::make_unique<mpcc::SelCollNNmodel>();
     mpcc::Constraints constraints = mpcc::Constraints(0.02,json_paths);
     mpcc::ArcLengthSpline track = mpcc::ArcLengthSpline(json_paths);
     mpcc::Model model = mpcc::Model(0.02, json_paths);
     mpcc::Param param = mpcc::Param(json_paths.param_path);
+
+    Eigen::Vector3d sel_col_n_hidden;
+    sel_col_n_hidden << 128, 64, 32;
+    selcolNN->setNeuralNetwork(mpcc::PANDA_DOF, 1, sel_col_n_hidden, true);
     
     genRoundTrack(track);
 
@@ -183,8 +193,8 @@ TEST(TestConstraints, TestSingularity)
     mpcc::Input uk1 = mpcc::vectorToInput(uk1_vec);
 
     mpcc::RobotData rbk, rbk1;
-    rbk.update(xk_vec.head(mpcc::PANDA_DOF),robot);
-    rbk1.update(xk1_vec.head(mpcc::PANDA_DOF),robot);
+    rbk.update(xk_vec.head(mpcc::PANDA_DOF),robot,selcolNN);
+    rbk1.update(xk1_vec.head(mpcc::PANDA_DOF),robot,selcolNN);
 
     bool result = false;
 

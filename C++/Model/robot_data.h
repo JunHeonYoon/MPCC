@@ -2,6 +2,7 @@
 #define MPCC_ROBOT_DATA_H
 
 #include "Model/robot_model.h"
+#include "Constraints/SelfCollision/SelfCollisionModel.h"
 
 namespace mpcc
 {
@@ -21,6 +22,9 @@ struct RobotData
     double manipul;                                // Manipullabilty
     Eigen::Matrix<double,PANDA_DOF,1> d_manipul;   // Gradient of Manipullabilty wrt q
 
+    double min_dist;                               // Minimum distance between robot links
+    Eigen::Matrix<double,PANDA_DOF,1> d_min_dist;  // Jacobian of minimum distance between robot links
+
     bool is_data_valid = false;
 
     void setZero()
@@ -35,7 +39,7 @@ struct RobotData
         d_manipul.setZero();
     }
 
-    void update(Eigen::Matrix<double,PANDA_DOF,1> q_input, const std::unique_ptr<RobotModel> &robot_model)
+    void update(Eigen::Matrix<double,PANDA_DOF,1> q_input, const std::unique_ptr<RobotModel> &robot_model, const std::unique_ptr<SelCollNNmodel> &selcol_model)
     {
         q = q_input;
         EE_position = robot_model->getEEPosition(q);
@@ -45,6 +49,10 @@ struct RobotData
         Jw = J.block(3,0,3,PANDA_DOF);
         manipul = robot_model->getManipulability(q);
         d_manipul = robot_model->getDManipulability(q);
+
+        auto pred = selcol_model->calculateMlpOutput(q, false);
+        min_dist = pred.first.value();
+        d_min_dist = pred.second.transpose();
 
         is_data_valid = true;
     }
