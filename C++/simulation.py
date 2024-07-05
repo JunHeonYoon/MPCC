@@ -7,15 +7,14 @@ import argparse
 
 
 # ROS library
-import roslibpy
 import rospy
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Header
 
 N = 10
-SLECOL_BUFFER = 3.0
-MANI_BUFFER = 0.03
+SLECOL_BUFFER = 1.0
+MANI_BUFFER = 0.01
 
 # Function to create a Path message from the track data
 def create_path_message1(track_data, init_position):
@@ -100,7 +99,7 @@ def plt_func(fig, selcol_ax, mani_ax,
              min_dist_true_line, min_dist_pred_line, mani_line, 
              time_data, min_dist_real_data, min_dist_pred_data, mani_data):
 
-    min_dist_true_line.set_data(time_data, min_dist_real_data)
+    # min_dist_true_line.set_data(time_data, min_dist_real_data)
     min_dist_pred_line.set_data(time_data, min_dist_pred_data)
     mani_line.set_data(time_data, mani_data)
 
@@ -118,7 +117,7 @@ def plt_func(fig, selcol_ax, mani_ax,
     buffer_line_mani = mani_ax.hlines(y=MANI_BUFFER, xmin=x_min, xmax=x_max, label='buffer (mani)', color="black", linewidth=2.0)
 
     # Ensure all lines are included in the legend
-    lines_selcol = [min_dist_true_line, min_dist_pred_line, buffer_line_selcol]
+    # lines_selcol = [min_dist_true_line, min_dist_pred_line, buffer_line_selcol]
     lines_selcol = [min_dist_pred_line, buffer_line_selcol]
     labels_selcol = [line.get_label() for line in lines_selcol]
     selcol_ax.legend(lines_selcol, labels_selcol)
@@ -126,6 +125,14 @@ def plt_func(fig, selcol_ax, mani_ax,
     lines_mani = [mani_line, buffer_line_mani]
     labels_mani = [line.get_label() for line in lines_mani]
     mani_ax.legend(lines_mani, labels_mani)
+
+    selcol_ax.set_title("Minimum distance")
+    selcol_ax.set_xlabel("Time (sec)")
+    selcol_ax.set_ylabel("Distance (cm)")
+
+    mani_ax.set_title("Manipulability Index")
+    mani_ax.set_xlabel("Time (sec)")
+    mani_ax.set_ylabel("Manipulability Index")
 
     fig.canvas.draw()
     fig.canvas.flush_events()
@@ -158,7 +165,6 @@ def main(args):
         selcol_ax.set_ylim([min(np.min(pred_min_dist_set), SLECOL_BUFFER) - 5, np.max(pred_min_dist_set) + 5])
         selcol_ax.grid()
 
-
         # Second subplot
         mani_line, = mani_ax.plot([], [], label='mani', color="red", linewidth=2.0)
         mani_ax.legend()
@@ -184,7 +190,8 @@ def main(args):
     min_dist_real_data = np.zeros((1))
     min_dist_pred_data = np.zeros((1))
     mani_data = np.zeros((1))
-    # sleep(5)
+    if(args.plot):
+        sleep(2)
 
     for iter in range(q_set.shape[0]):
         start = time()
@@ -216,8 +223,9 @@ def main(args):
         ref_local_path_pub.publish(ref_local_path_msg)
         end = time()
         elapsed = end - start
-        # if elapsed < 0.2:
-        #     sleep(0.2 - elapsed)
+        if(args.plot):
+            if elapsed < 0.2:
+                sleep(0.2 - elapsed)
         
         print('time elapsed:', time() - start)
 

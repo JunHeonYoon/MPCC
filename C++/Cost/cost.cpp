@@ -110,16 +110,9 @@ void Cost::getContouringCost(const ArcLengthSpline &track,const State &x,const R
     // contouring cost matrix
     Eigen::Vector2d ContouringCost;
     ContouringCost.setZero(2);
-    if(rb.min_dist < 3.0 || rb.manipul < 0.03)
-    {
-        ContouringCost(0) = k < N ? cost_param_.q_c_red_ratio*cost_param_.q_c : cost_param_.q_c_red_ratio*cost_param_.q_c_N_mult * cost_param_.q_c; // for contouring error
-        ContouringCost(1) = cost_param_.q_l_inc_ratio*cost_param_.q_l; // for lag error
-    }
-    else
-    {
-        ContouringCost(0) = k < N ? cost_param_.q_c : cost_param_.q_c_N_mult * cost_param_.q_c; // for contouring error
-        ContouringCost(1) = cost_param_.q_l; // for lag error
-    }
+    ContouringCost(0) = k < N ? contouring_cost_ : cost_param_.q_c_N_mult * contouring_cost_; // for contouring error
+    ContouringCost(1) = lag_cost_; // for lag error
+
 
     // progress maximization part
     double s_max = track.getLength();
@@ -165,20 +158,10 @@ void Cost::getHeadingCost(const ArcLengthSpline &track,const State &x,const Robo
     const Eigen::Vector3d Log_R_bar = getInverseSkewVector(LogMatrix(R_bar));
     Eigen::Matrix<double,3,NX> d_Log_R_bar = Eigen::MatrixXd::Zero(3,NX);
 
-    double heading_cost;
-    if(rb.min_dist < 3.0 || rb.manipul < 0.03)
-    {
-        heading_cost = cost_param_.q_ori_red_ratio * cost_param_.q_ori;
-    }
-    else
-    {
-        heading_cost = cost_param_.q_ori;
-    }
-
     // Exact Heading error cost
     if(obj)
     {
-        (*obj) = heading_cost * Log_R_bar.squaredNorm();
+        (*obj) = heading_cost_ * Log_R_bar.squaredNorm();
     }
 
 
@@ -196,14 +179,14 @@ void Cost::getHeadingCost(const ArcLengthSpline &track,const State &x,const Robo
     if(grad)
     {
         grad->setZero();
-        grad->f_x = 2.0 * heading_cost * d_Log_R_bar.transpose() * Log_R_bar;
+        grad->f_x = 2.0 * heading_cost_ * d_Log_R_bar.transpose() * Log_R_bar;
     }
 
     // Hessian of Heading error cost
     if(hess)
     {
         hess->setZero();
-        hess->f_xx = 2.0 * heading_cost * d_Log_R_bar.transpose() * d_Log_R_bar;
+        hess->f_xx = 2.0 * heading_cost_ * d_Log_R_bar.transpose() * d_Log_R_bar;
     }
     return;
 }
@@ -252,6 +235,19 @@ void Cost::getInputCost(const ArcLengthSpline &track,const Input &u,const RobotD
 void Cost::getCost(const ArcLengthSpline &track,const State &x,const Input &u,const RobotData &rb,int k,
                    double* obj,CostGrad* grad,CostHess* hess)
 {
+    double ratio = std::min(rb.min_dist / (param_.tol_selcol*2.0), rb.manipul / (param_.tol_sing*2.0));
+    if(ratio <= 1.0)
+    {
+        contouring_cost_ = cost_param_.q_c * ((1.0 - cost_param_.q_c_red_ratio) / (1.0 - 0.5) * (ratio - 0.5) + cost_param_.q_c_red_ratio);
+        lag_cost_ = cost_param_.q_l * ((1.0 - cost_param_.q_l_inc_ratio) / (1.0 - 0.5) * (ratio - 0.5) + cost_param_.q_l_inc_ratio);
+        heading_cost_ = cost_param_.q_ori * ((1.0 - cost_param_.q_ori_red_ratio) / (1.0 - 0.5) * (ratio - 0.5) + cost_param_.q_ori_red_ratio);
+    }
+    else
+    {
+        contouring_cost_ = cost_param_.q_c;
+        lag_cost_ = cost_param_.q_l;
+        heading_cost_ = cost_param_.q_ori;
+    }
     double obj_contouring, obj_heading, obj_input;
     CostGrad grad_contouring, grad_heading, grad_input;
     CostHess hess_contouring, hess_heading, hess_input;

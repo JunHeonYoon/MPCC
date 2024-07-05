@@ -61,7 +61,7 @@ void Constraints::getSelcollConstraint(const State &x,const Input &u,const Robot
     Eigen::VectorXd d_min_dist = 0.01*rb.d_min_dist;
 
     // compute RBF value of minimum distance and its derivative
-    double r = 0.01*2.0; // buffer [cm]
+    double r = param_.tol_selcol*0.01; // buffer [cm]
     double delta = -0.5; // switching point of RBF
     double RBF = getRBF(delta, min_dist - r);
 
@@ -101,7 +101,7 @@ void Constraints::getSingularConstraint(const State &x,const Input &u,const Robo
     Eigen::VectorXd d_manipulability = rb.d_manipul;
 
     // compute RBF value of manipulability and its derivative
-    double eps = 0.03;    // buffer
+    double eps = param_.tol_sing;    // buffer
     double delta = -0.5;  // switching point of RBF
     double RBF = getRBF(delta, manipulability - eps);
 

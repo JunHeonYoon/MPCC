@@ -169,6 +169,7 @@ private:
     
 
     CostParam cost_param_;
+    double contouring_cost_, lag_cost_, heading_cost_;
     Param param_;
 };
 }

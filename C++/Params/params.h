@@ -35,6 +35,9 @@ public:
     double s_trust_region;
     double deacc_ratio; // starting ratio to deaccelerate movement of s(path parameter)
 
+    double tol_sing;
+    double tol_selcol;
+
     Param();
     Param(std::string file);
 

@@ -38,6 +38,9 @@ Param::Param(std::string file){
     // initial warm start and trust region (model dependent)
     s_trust_region = jsonModel["s_trust_region"];
 
+    tol_sing = jsonModel["tol_sing"];
+    tol_selcol = jsonModel["tol_selcol"];
+
 }
 
 CostParam::CostParam(){
